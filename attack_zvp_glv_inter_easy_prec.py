@@ -29,6 +29,11 @@ except ImportError as e:
 
 def parse_hex_pubkey(hex_string):
     """Парсинг публичного ключа из hex строки"""
+    # Удаляем префикс '04' если присутствует (несжатый формат)
+    if hex_string.startswith('04') and len(hex_string) == 130:
+        hex_string = hex_string[2:]
+        print(f"   🔍 Обнаружен префикс '04', удаляем (несжатый формат)")
+    
     if len(hex_string) != 128:
         raise ValueError(f"Публичный ключ должен содержать 128 hex символов, получено: {len(hex_string)}")
     
@@ -99,18 +104,21 @@ def setup_zvp_parameters(pubkey_hex, bits):
     return zvp_params, point
 
 
-def perform_attack(zvp_params, target_bits, verbose=True):
+def perform_attack(zvp_params, target_bits, window_size, verbose=True):
     """Выполнение атаки"""
     print(f"\n🚀 Запуск атаки ZVP-GLV Interleaving Easy Precision...")
     print(f"   Алгоритм: ZVP-GLV с регулярным интерливингом")
     print(f"   Целевые биты: {target_bits}")
-    print(f"   Размер окна w: {target_bits}")
+    print(f"   Размер окна w: {window_size}")
     
     start_time = time.time()
     
     try:
-        # Устанавливаем функцию атаки
-        zvp_params.attack = zvp_glv_interleaving_easy_regular
+        # Устанавливаем функцию атаки с параметром w
+        def attack_wrapper(params):
+            return zvp_glv_interleaving_easy_regular(params, window_size)
+        
+        zvp_params.attack = attack_wrapper
         
         if verbose:
             print("📈 Выполнение атаки...")
@@ -153,7 +161,7 @@ def perform_attack(zvp_params, target_bits, verbose=True):
         return False, None
 
 
-def save_results(results, zvp_params, pubkey_hex, filename=None):
+def save_results(results, zvp_params, pubkey_hex, window_size, filename=None):
     """Сохранение результатов в JSON файл"""
     if not filename:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -167,6 +175,7 @@ def save_results(results, zvp_params, pubkey_hex, filename=None):
         "attack_type": "zvp_glv_interleaving_easy_precision",
         "target_pubkey": pubkey_hex,
         "target_bits": zvp_params.target_bits,
+        "window_size": window_size,
         "curve_params": zvp_params.glv.to_dict(),
         "attack_results": results,
         "registers": zvp_params.registers.to_strings() if hasattr(zvp_params.registers, 'to_strings') else str(zvp_params.registers),
@@ -189,7 +198,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Примеры использования:
-  python attack_zvp_glv_inter_easy_prec.py --pubkey 1234567890abcdef...
+  python attack_zvp_glv_inter_easy_prec.py --pubkey 1234567890abcdef... --w 4
+  python attack_zvp_glv_inter_easy_prec.py --pubkey 1234567890abcdef... --bits 4 --w 5 --save results.json
 
 Описание атаки:
   Этот скрипт реализует атаку Zero-Value Point (ZVP) на GLV-разложение
@@ -211,6 +221,15 @@ def main():
         choices=range(2, 33),
         metavar='2-32',
         help='Количество целевых бит для атаки (по умолчанию: 4)'
+    )
+    
+    parser.add_argument(
+        '--w',
+        type=int,
+        default=4,
+        choices=range(3, 11),
+        metavar='3-10',
+        help='Размер окна для w-NAF представления (по умолчанию: 4)'
     )
     
     parser.add_argument(
@@ -248,11 +267,11 @@ def main():
         sys.exit(0)
     
     # Выполнение атаки
-    success, attack_results = perform_attack(zvp_params, args.bits, verbose=not args.quiet)
+    success, attack_results = perform_attack(zvp_params, args.bits, args.w, verbose=not args.quiet)
     
     # Сохранение результатов
     if args.save:
-        save_results(attack_results, zvp_params, args.pubkey, args.save)
+        save_results(attack_results, zvp_params, args.pubkey, args.w, args.save)
     
     if success:
         print(f"\n🎉 Атака завершена успешно!")

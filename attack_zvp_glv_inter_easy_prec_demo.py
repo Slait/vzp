@@ -17,6 +17,11 @@ from datetime import datetime
 
 def parse_hex_pubkey(hex_string):
     """Парсинг публичного ключа из hex строки"""
+    # Удаляем префикс '04' если присутствует (несжатый формат)
+    if hex_string.startswith('04') and len(hex_string) == 130:
+        hex_string = hex_string[2:]
+        print(f"   🔍 Обнаружен префикс '04', удаляем (несжатый формат)")
+    
     if len(hex_string) != 128:
         raise ValueError(f"Публичный ключ должен содержать 128 hex символов, получено: {len(hex_string)}")
     
@@ -106,12 +111,12 @@ def setup_zvp_parameters(pubkey_hex, bits):
     return params
 
 
-def simulate_attack(params, target_bits, verbose=True):
+def simulate_attack(params, target_bits, window_size, verbose=True):
     """Симуляция выполнения атаки (демо версия)"""
     print(f"\n🚀 Запуск атаки ZVP-GLV Interleaving Easy Precision...")
     print(f"   Алгоритм: ZVP-GLV с регулярным интерливингом")
     print(f"   Целевые биты: {target_bits}")
-    print(f"   Размер окна w: {target_bits}")
+    print(f"   Размер окна w: {window_size}")
     
     start_time = time.time()
     
@@ -127,9 +132,9 @@ def simulate_attack(params, target_bits, verbose=True):
         time.sleep(0.5)
     
     # Симулируем результат атаки
-    # Чем больше bits, тем лучше результат атаки
+    # Чем больше window_size, тем лучше результат атаки
     base_entropy = 256  # Начальная энтропия
-    reduction_factor = min(target_bits * 8, 200)  # Фактор снижения
+    reduction_factor = min(window_size * 12 + target_bits * 4, 220)  # Фактор снижения
     remaining_bits = max(base_entropy - reduction_factor, 20)
     
     # Добавляем случайность для реалистичности
@@ -143,6 +148,7 @@ def simulate_attack(params, target_bits, verbose=True):
         'remaining': remaining_bits,
         'duration': duration,
         'target_bits': target_bits,
+        'window_size': window_size,
         'attack_successful': remaining_bits < 64
     }
     
@@ -177,6 +183,7 @@ def save_results(results, params, pubkey_hex, filename=None):
         "attack_type": "zvp_glv_interleaving_easy_precision_demo",
         "target_pubkey": pubkey_hex,
         "target_bits": params['bits'],
+        "window_size": results.get('window_size', params.get('window_size', 4)),
         "curve_params": params['curve_params'],
         "attack_results": results,
         "registers": params['registers'],
@@ -200,7 +207,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Примеры использования:
-  python attack_zvp_glv_inter_easy_prec_demo.py --pubkey 79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8
+  python attack_zvp_glv_inter_easy_prec_demo.py --pubkey 79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8 --w 4
+  python attack_zvp_glv_inter_easy_prec_demo.py --pubkey PUBLIC_KEY --bits 4 --w 5 --save results.json
 
 Описание атаки:
   Этот скрипт демонстрирует работу атаки Zero-Value Point (ZVP) на GLV-разложение
@@ -224,6 +232,15 @@ def main():
         choices=range(2, 33),
         metavar='2-32',
         help='Количество целевых бит для атаки (по умолчанию: 4)'
+    )
+    
+    parser.add_argument(
+        '--w',
+        type=int,
+        default=4,
+        choices=range(3, 11),
+        metavar='3-10',
+        help='Размер окна для w-NAF представления (по умолчанию: 4)'
     )
     
     parser.add_argument(
@@ -256,12 +273,15 @@ def main():
     if params is None:
         sys.exit(1)
     
+    # Добавляем размер окна в параметры
+    params['window_size'] = args.w
+    
     if args.verify:
         print("✅ Публичный ключ корректен!")
         sys.exit(0)
     
     # Выполнение атаки
-    success, attack_results = simulate_attack(params, args.bits, verbose=not args.quiet)
+    success, attack_results = simulate_attack(params, args.bits, args.w, verbose=not args.quiet)
     
     # Сохранение результатов
     if args.save:

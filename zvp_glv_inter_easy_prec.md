@@ -76,6 +76,10 @@ python attack_zvp_glv_inter_easy_prec.py --pubkey <HEX_PUBKEY> [ОПЦИИ]
   - Больше бит = более точная атака, но требует больше предвычисленных данных
   - Рекомендуется начинать с 3-4 бит
 
+- `--w <3-10>` - Размер окна для w-NAF представления (по умолчанию: 4)
+  - Согласно Figure 6 в научной работе, рекомендуются w = 3, 4, 5
+  - Больше w = лучше результат атаки, но требует больше предвычисленных данных
+
 - `--save <filename>` - Сохранить результаты в JSON файл
   - Если не указано, результаты выводятся только на экран
 
@@ -89,19 +93,43 @@ python attack_zvp_glv_inter_easy_prec.py --pubkey <HEX_PUBKEY> [ОПЦИИ]
 
 ```bash
 python attack_zvp_glv_inter_easy_prec.py \
-  --pubkey 79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8
+  --pubkey 79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8 \
+  --w 4
 ```
 
-#### 2. Атака с сохранением результатов
+#### 2. Атака с разными размерами окна
+
+```bash
+# w=3 (быстрая, менее точная)
+python attack_zvp_glv_inter_easy_prec.py \
+  --pubkey 79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8 \
+  --w 3
+
+# w=5 (медленная, более точная)
+python attack_zvp_glv_inter_easy_prec.py \
+  --pubkey 79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8 \
+  --w 5
+```
+
+#### 3. Атака с сохранением результатов
 
 ```bash
 python attack_zvp_glv_inter_easy_prec.py \
   --pubkey 79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8 \
   --bits 5 \
+  --w 4 \
   --save attack_results.json
 ```
 
-#### 3. Проверка публичного ключа
+#### 4. Атака с публичным ключом с префиксом (автоматически распознается)
+
+```bash
+python attack_zvp_glv_inter_easy_prec.py \
+  --pubkey 04ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a26302b195386bea3f5f002dc033b92cfc2c9e71b586302b09cfe535e1ff290b1b5ac \
+  --w 4
+```
+
+#### 5. Проверка публичного ключа
 
 ```bash
 python attack_zvp_glv_inter_easy_prec.py \
@@ -109,11 +137,12 @@ python attack_zvp_glv_inter_easy_prec.py \
   --verify
 ```
 
-#### 4. Тихий режим
+#### 6. Тихий режим
 
 ```bash
 python attack_zvp_glv_inter_easy_prec.py \
   --pubkey 79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8 \
+  --w 4 \
   --quiet
 ```
 

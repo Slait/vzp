@@ -1,0 +1,27 @@
+{
+  "timestamp": "2025-07-21T12:16:58.739156",
+  "attack_type": "zvp_glv_interleaving_easy_precision_demo",
+  "target_pubkey": "ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a26302b195386bea3f5f002dc033b92cfc2c9e71b586302b09cfe535e1ff290b1b5ac",
+  "target_bits": 4,
+  "window_size": 8,
+  "curve_params": {
+    "p": 115792089237316195423570985008687907853269984665640564039457584007908834671663,
+    "order": 115792089237316195423570985008687907852837564279074904382605163141518161494337,
+    "beta": 55594575648329892869085402983802832744385952214688224221778511981742606582254,
+    "lambda": 37718080363155996902926221483475020450927657555482586988616620542887997980018
+  },
+  "attack_results": {
+    "remaining": 142.8,
+    "duration": 2.000481367111206,
+    "target_bits": 4,
+    "window_size": 8,
+    "attack_successful": false
+  },
+  "registers": [
+    "X1 - X2",
+    "Y1 - Y2",
+    "X1*Y2 - X2*Y1"
+  ],
+  "success": false,
+  "demo_mode": true
+}

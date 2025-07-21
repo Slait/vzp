@@ -37,7 +37,8 @@ python3 attack_zvp_glv_inter_easy_prec_demo.py --help
 # Базовая атака
 python3 attack_zvp_glv_inter_easy_prec_demo.py \
   --pubkey 79BE667EF9DCBBAC55A06295CE870B07029BFCDB2DCE28D959F2815B16F81798483ADA7726A3C4655DA4FBFC0E1108A8FD17B448A68554199C47D08FFB10D4B8 \
-  --bits 25 \
+  --bits 4 \
+  --w 5 \
   --save results.json
 ```
 
@@ -51,13 +52,15 @@ sudo apt-get install sagemath
 sage -python attack_zvp_glv_inter_easy_prec.py \
   --pubkey YOUR_PUBKEY_128_HEX_CHARS \
   --bits 4 \
+  --w 4 \
   --save attack_results.json
 ```
 
 ## Параметры командной строки
 
-- `--pubkey` - Публичный ключ (128 hex символов) **[ОБЯЗАТЕЛЬНО]**
+- `--pubkey` - Публичный ключ (128 hex символов или 130 с префиксом '04') **[ОБЯЗАТЕЛЬНО]**
 - `--bits` - Количество целевых бит (2-32, по умолчанию: 4)
+- `--w` - Размер окна для w-NAF (3-10, по умолчанию: 4)
 - `--save` - Сохранить результаты в JSON файл
 - `--quiet` - Тихий режим
 - `--verify` - Только проверить публичный ключ
