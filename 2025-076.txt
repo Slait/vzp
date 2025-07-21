@@ -1,0 +1,425 @@
+## Decompose and conquer:
+
+## ZVP attacks on GLV curves
+
+Vojtˇ ech Such´ anek 1 , Vladim´ ır Sedl´ aˇ cek 2 , and Marek S´ ys 1
+
+1 Masaryk University, Czech Republic 2 Rutgers University, New Jersey { vojtechsu, vlada.sedlacek, syso } @mail.muni.cz
+
+Abstract. While many side-channel attacks on elliptic curve cryptography can be avoided by coordinate randomization, this is not the case for the zero-value point (ZVP) attack. This attack can recover a prefix of static ECDH key but requires solving an instance of the dependent coordinates problem (DCP), which is open in general. We design a new method for solving the DCP on GLV curves, including the Bitcoin secp256k1 curve, outperforming previous approaches. This leads to a new type of ZVP attack on multiscalar multiplication, recovering twice as many bits when compared to the classical ZVP attack. We demonstrate a 63% recovery of the private key for the interleaving algorithm for multiscalar multiplication. Finally, we analyze the largest database of curves and addition formulas with over 14 000 combinations and provide the first classification of their resistance against the ZVP attack.
+
+Keywords: dependent coordinates problem · elliptic curve cryptography · GLV curve · side-channel attacks · ZVP attack
+
+## 1 Introduction
+
+Elliptic curve cryptography (ECC) provides several efficient schemes suitable for memory-constrained devices such as smartcards, but it can fall prey to sidechannel attacks (SCAs) [19]. These exploit extra information leaked from the device during the execution of the protocol - e.g., timing, power consumption, or electromagnetic radiation. While most basic SCAs against ECC can be prevented by coordinate randomization, this is not the case for the refined power-analysis attack (RPA) [15], the exceptional procedure attack (EPA) [17] or the most general one - the zero-value point (ZVP) attack [1]. The ZVP attack repeatedly forces a zero intermediate value during the computations of an addition formula in the ECDH protocol to recover the upper bits of a static private key. For each bit of the private key, the attacker needs to solve an instance of the dependent coordinates problem (DCP) [24]. The difficulty of the DCP depends on the implemented addition formulas, but generally it remains an open problem to find an efficient algorithm for the DCP. If the implemented addition formula contains only hard DCP problems, only a few bits of the private key can be recovered. As a result, existing progress on the ZVP attacks focuses on addition formulas containing easy instances of DCP [1, 22, 24].
+
+Meanwhile, Gallant, Lambert, and Vanstone [14] introduced GLV curves equipped with efficiently computable endomorphisms, which allow us to replace single-scalar multiplication with a faster multiscalar multiplication using two scalars. Extending this idea often led to record-breaking ECC implementations [13, 20, 16, 6]. A popular example of a GLV curve is secp256k1 [9], which is used in the Bitcoin Core, or several of the popular pairing-friendly curves, such as BLS12-381, used in Zcash [7]. The ZVP attack was designed for single-scalar multiplication, and it is unclear whether multiscalar multiplication algorithms are more or less vulnerable to this attack. Additionally, while it is believed that endomorphisms do not significantly help to solve the discrete logarithm problem [5], their effect on DCP has not been studied. With this motivation, we present the following contributions :
+
+- -We develop new ZVP attacks on the classical multiscalar multiplication algorithms (interleaving and the Straus-Shamir trick), focusing on hard DCP problems. Our attacks use a fast endomorphism to recover twice as many bits when compared to the classical ZVP attack (Section 4). Additionally, for some implementations of the interleaving algorithm, our ZVP attack is able to recover 63% of the private key on average.
+- -We classify all the addition formulas from the Explicit-Formulas Database [4] with respect to the difficulty of the underlying DCP problems (Section 3). We show that the EPA attack cannot be used on the secp256k1 curve, and the ZVP attack on all but one of the addition formulas in EFD supporting secp256k1 must solve hard instances of DCP. We provide a semi-automatic tool for the classification of formulas with respect to other curves as well.
+
+## 2 Background
+
+Throughout the paper, p ≥ 5 is a prime number, and F p is a finite field of size p . Define an elliptic curve E over F p in the short Weierstrass model by the equation
+
+̸
+
+$$E / \mathbb { F } _ { p } \colon y ^ { 2 } = x ^ { 3 } + a x + b, \ \ a, b \in \mathbb { F } _ { p }, \ \ 4 a ^ { 3 } + 2 7 b ^ { 2 } \neq 0.$$
+
+The set of solutions over F p forms a finite abelian group E ( F p ) with a neutral element ∞ and cardinality n = # E ( F p ) ≈ p . For any point P ∈ E ( F p ), denote its coordinates by x P , y P . The addition on E of two affine points R = P + Q is defined by the following rational functions:
+
+$$x _ { R } = s ^ { 2 } - x _ { P } - x _ { Q }, \ \ y _ { R } = s ( x _ { P } - x _ { R } ) - y _ { P },$$
+
+̸
+
+where s = y P -y Q x P -x Q if P = Q and s = 3 x 2 P + a 2 y P otherwise. This is well-defined unless P = -Q or Q = P , 2 P = ∞ , in which case R = ∞ .
+
+We can naturally define scalar multiplication (SM) d · P as d -fold addition P + · · · + P . There are several algorithms for computing SM; generally, they iterate over the digits 3 of the scalar d , evaluating formulas for point addition
+
+3 Depending on the representation, we denote (signed) digits by upper indices in brackets, i.e., the least significant digit of d is d (0) . By d ≥ i we denote the upper digits of d down to d ( i ) . In particular, for binary representation, d (0) is the least significant bit.
+
+( add ( P, Q )) and doubling ( dbl ( P )). For more efficiency, several popular SM algorithms also use differential addition formulas (i.e., P + Q = dadd ( P -Q,P,Q )) and ladder formulas (i.e., (2 P, P + Q ) = ladd ( P -Q,P,Q )). One of the popular SM algorithms is the double-and-add with the non-adjacent form (NAF) (Algorithm 1), in which d ( i ) ∈ {-1 , 0 , 1 } .
+
+To avoid a costly inversion, formulas are defined in non-affine coordinate systems. For instance, the following is a projective add formula from [10]:
+
+$$( x _ { 3 } \colon y _ { 3 } \colon z _ { 3 } ) = ( v A \colon u ( v ^ { 2 } x _ { 1 } z _ { 2 } - A ) - v ^ { 3 } y _ { 1 } z _ { 2 } \colon v ^ { 3 } z _ { 1 } z _ { 2 } ) \quad ( 1 ) \\ u = y _ { 2 } z _ { 1 } - y _ { 1 } z _ { 2 }, \quad v = x _ { 2 } z _ { 1 } - x _ { 1 } z _ { 2 }, \quad A = u ^ { 2 } z _ { 1 } z _ { 2 } - v ^ { 3 } - 2 v ^ { 2 } x _ { 1 } z _ { 2 }$$
+
+for a projective sum ( x 3 : y 3 : z 3 ) of two points ( x 1 : y 1 : z 1 ), ( x 2 : y 2 : z 2 ). The Explicit Formulas Database (EFD) [4] is the largest public database of formulas for multiple coordinate systems and curve models ([24] provides a good overview of the database). Among the short Weierstrass and others, it supports the (Twisted) Edwards model [3] and the Montgomery model [21].
+
+## Algorithm 1:
+
+Input: P ∈ E , m -digit scalar d
+
+Output: kP
+
+- 1 Q ←∞
+- 2 for i = m -1 down to 0 do
+- 3 Q ← dbl ( Q
+- 4 if d ( i ) = 1 then Q ← add ( Q,P
+- 5 if d = -1 then Q ← add ( Q, -P
+- 6 return Q
+
+```
+Double-and-add. in the NAF representation. ) ) ( i ) )
+```
+
+## 2.1 GLV curves
+
+A GLV curve [14] is an elliptic curve E equipped with an efficiently computable endomorphism ϕ for speeding up SM. An endomorphism ϕ : E → E is defined by rational maps r 1 , r 2 : ( x, y ) ↦→ ( r 1 ( x, y ) , r 2 ( x, y )) and satisfies ϕ ( ∞ ) = ∞ . Coefficients of r 1 , r 2 lie in F p , and r 1 can be expressed purely in the x -coordinate (in the Weierstrass model). If the group E ( F p ) has a prime order n , then ϕ acts on E ( F p ) as SM by some λ ∈ Z . Any scalar d ∈ Z can be then decomposed using the extended Euclidean algorithm as
+
+$$d = d _ { 0 } + d _ { 1 } \lambda \pmod { n }, \ \ d _ { 0 }, d _ { 1 } \approx \sqrt { n }.$$
+
+The computation of kP can then be carried out through multiscalar multiplication (MSM) as ( d 0 + d 1 λ ) P = d 0 P + d 1 ϕ ( P ). This is usually done using the interleaving method (as in the libsecp256k1 library [29]) or the Straus-Shamir [2] trick. Both methods process the two SMs d 0 P , d 1 ϕ ( P ) at the same time, which
+
+eliminates half of the dbl operations when compared to simple SM dP (e.g., using Algorithm 1). The difference between the two methods is that at the beginning, the Straus-Shamir trick precomputes P ± ϕ ( P ), while the interleaving precomputes small multiples of the points P and ϕ ( P ) separately. Details differ depending on the representation of the scalars d 0 , d 1 .
+
+Algorithm 2 is the interleaving method combined with the regular w -NAF representation as designed in [18] and used in libsecp256k1 for w = 5 (also proposed by Brumley [8] for OpenSSL). In the regular w -NAF representation, the digits of the scalar take the odd values from {± 1 , ± 3 , . . . , ± (2 w -1) } . Since none of the digits of the private key are ever zero in this representation, the number of add and dbl operations is fixed, providing a SCA protection (e.g., against cache timing attacks). Note that in each iteration of Algorithm 2, computing Q + d ( i ) 0 P + d ( i ) 1 ϕ ( P ) requires two additions. There are two natural options to order them, either ( Q + d ( i ) 0 P ) + d ( i ) 1 ϕ ( P ) or Q +( d ( i ) 0 P + d ( i ) 1 ϕ ( P )). The second option requires temporary space to store d ( i ) 0 P + d ( i ) 1 ϕ ( P ), but it can use faster formulas for addition since both the precomputed points d ( i ) 0 P, d ( i ) 1 P can be in the affine form. For instance, this approach with the modified add-2009-bl addition formula can save one finite field squaring compared to the first option [4]. The first variant is used in libsecp256k1 , but we will consider both variants of the interleaving algorithm, as their distinction will be relevant for our attacks.
+
+## Algorithm 2: Interleaving Multiscalar Multiplication.
+
+```
+Input: P ∈ E , endomorphism ϕ , l -digit regular w -NAF scalars d 0 , d 1 Output: d 0 + d 1 ϕ ( P ) 1 Store kP , kϕ ( P ) for k ∈ {± 1 , ± 3 , . . . , ± (2 w -1) } 2 Q ←∞ 3 for i = l -1 down to 0 do 4 for j = 0 to w -1 do 5 Q ← dbl ( Q ) 6 Q ← add ( Q,d ( i ) 0 P ) /* Alternatively: R ← add ( d ( i ) 0 P, d ( i ) 1 ϕ ( P )) */ 7 Q ← add ( Q,d ( i ) 1 ϕ ( P )) /* Q ← add ( Q,R ) */ 8 return Q
+```
+
+̸
+
+Algorithm 3 is the Straus-Shamir trick combined with the GLV-SAC representation. Faz-Hern´ andez, Longa, and S´ anchez [12] designed this representation to achieve a constant number of dbl and add operations for SCA protection. The GLV-SAC representation of two scalars d 0 , d 1 is a signed representation satisfying ( d ( i ) 0 , d ( i ) 1 ) ∈ { (1 , 0) , ( -1 , 0) , (1 , 1) , ( -1 , -1) } . In particular, ( d ( i ) 0 , d ( i ) 1 ) = (0 , 0), which means that add is computed in each iteration.
+
+The most prominent example of a GLV curve is the secp256k1 curve used in the Bitcoin core:
+
+$$E / \mathbb { F } _ { p } \colon y ^ { 2 } = x ^ { 3 } + 7, \ \ p = 2 ^ { 2 5 6 } - 2 ^ { 3 2 } - 9 7 7,$$
+
+## Algorithm 3: Straus-Shamir trick.
+
+- Input: P ∈ E , endomorphism ϕ , l -digit GLV-SAC scalars d 0 , d 1 Output: d 0 + d 1 ϕ ( P ) 1 Store g 0 P + g 1 ϕ ( P ) for ( g 0 , g 1 ) ∈ { (1 , 1) , ( -1 , -1) , (1 , 0) , ( -1 , 0) } 2 Q ←∞ 3 for i = l -1 down to 0 do 4 Q ← dbl ( Q ) 5 Q ← add ( Q,d ( i ) 0 P + d ( i ) 1 ϕ ( P ))
+- 6 return Q
+
+which is a member of the family of short Weierstrass curves with a = 0 and p = 1 (mod 3). Such curves admit an endomorphism ϕ : ( x, y ) ↦→ ( βx, y ), where β ∈ F × p is an element of order 3. The endomorphism can be computed using only one multiplication (by β ) in F p . Moreover, it acts on E ( F p ) as λ , which satisfies the quadratic equation λ 2 + λ +1 = 0. This family of GLV curves, including the secp256k1 curve, is the focus of this work.
+
+## 2.2 ZVP attack
+
+The target of the ZVP attack [1] is a static private key d used in the ECDH protocol implemented on a device to which the attacker has access. The device takes a point P (public key) on input, which is multiplied by the secret key d as part of the protocol, resulting in dP . The special assumption of the ZVP attack is that the attacker has a side-channel oracle (given by, e.g., power consumption) that tells them whether a zero intermediate value has occurred during the computation of the scalar multiplication. For example, during the computation of the add formula in (1), it can be detected that the intermediate value A = 0. This is a reasonable assumption as the power consumption during the zero-value operations dramatically decreases. See also Figure 1.
+
+Fig. 1: Construction of the ZVP oracle O .
+
+<!-- image -->
+
+We will explain the attack in detail on Algorithm 1. The attacker gradually recovers the prefixes d ≥ i of d , digit by digit, starting from an empty prefix. Assuming that the attacker recovered the prefix d ≥ i , they take a guess on the next upper digit d ( i -1) . The idea of the ZVP attack is to verify this guess by
+
+constructing P such that a zero value appears during the computation of add . If the guess on d ( i -1) is correct then O ( P ) = True .
+
+It remains to explain how to construct such points P that invoke the zero intermediate value during add . The attacker uses the fact that in a formula for add , any intermediate value can be expressed as a polynomial f in the coordinates of the input points Q and P (or -P ) to the add - one can see that in the add formula in (1). The goal is, therefore, to find P such that the coordinates of ± P and Q are the roots of f , where Q is a known multiple of P . This problem is an instance of the so-called dependent coordinates problem (DCP):
+
+Definition 1. Let E/ F p : y 2 = x 3 + ax + b be a curve. Given a polynomial f ∈ F p [ x 1 , x 2 , y 1 , y 2 ] and scalars k, g ∈ Z , find a point P ∈ E ( F p ) such that f ( x Q , x G , y Q , y G ) = 0 , where Q = kP , G = gP . We denote this problem 4 as DCP f ( k, g ) . An instance with g = 1 , G = P is denoted as DCP f ( k ) .
+
+To summarize the ZVP attack, the attacker makes a guess g on the digit d ( i -1) of a private key d , with already recovered prefix k = d ≥ i , selects an intermediate polynomial f that appears during the add computation and solves DCP f ( k, g ). The solution is a point P for which O ( P ) = True if the guessed k is correct, i.e., if g = d ( i -1) .
+
+Remark 1. One might jump to the conclusion that if O ( P ) = True , then the guess g must be correct. As an example, if f = x 1 + x 2 and P is a solution to DCP f ( k, g ) then x gP + x kP = 0. However, x -gP + x kP = 0 and so P would invoke a zero if g is correct as well as if -g is correct. For such cases, we have to keep track of all the possibilities for g as we progress through the digits of d .
+
+The ZVP attack has two issues, though. Firstly, solving DCP effectively is, in general, an open problem, as we discuss in the following section. Instances of DCP with smaller values of k (shorter prefixes d ≥ i ) can be easily solved, but that only allows the attacker to target only a few digits of d . Secondly, DCP does not have to have a solution, regardless of whether our guess is correct or not. We, therefore, cannot simply iteratively reveal each digit of d , as some digits might correspond to cases for which the DCP does not have a solution.
+
+There are two attacks that can be considered special cases of the ZVP attack called Refined Power Analysis (RPA) attack [15] and Exceptional Procedure attack (EPA) [17]. The RPA attack forces a coordinate of a point to be zero during the computation of the scalar multiplication. The DCP in this case is DCP f ( k ) for either f = y 1 or f = x 1 . The RPA attack is independent of the choice of the formula for add or dbl and relies purely on the existence of points with zero coordinates. All points with zero coordinates in the usual curve models have low order ( ≤ 4) and should not appear during the scalar multiplication with the exception of points (0 , y ) in the Weierstrass model [24]. The EPA attack takes a similar approach as RPA but also assumes that an incorrect computation
+
+4 The original formulation of DCP in [24] is with g = 1 for the simple binary representation. This is a generalization for more SM algorithms and scalar representations.
+
+of add can be forced. This computation is induced using special points for which the used formula for add is not defined.
+
+All ZVP attacks can be thwarted using scalar randomization, as the attacker cannot solve the DCP for an unknown randomized scalar and cannot prepare the input point. However, the RPA attack is resistant to projective coordinate randomization as (0 : y : z ) = (0 : ry : rz ) for any r ∈ F p . ZVP and EPA attacks are resistant to coordinate randomization on the condition that the roots of the DCP polynomial f do not change under coordinate randomization. This is almost always the case for addition formulas in EFD (see Section 3).
+
+## 2.3 Solving DCP
+
+Given a DCP f ( k, g ) problem, one can replace the polynomial f ∈ F p [ x 1 , x 2 , y 1 , y 2 ] with f ′ ∈ F p [ x 1 , x 2 ], by removing any occurrences of y 1 , y 2 using the curve equation [24]. We will, therefore, assume that already f ∈ F p [ x 1 , x 2 ]. In general, the only known approach [24, 1] for solving the DCP f ( k, g ) is to express the maps for multiplication by k and g using rational functions u k , u g ∈ F p ( x ) and substitute into f :
+
+$$f \left ( u _ { k } ( x ), u _ { g } ( x ) \$$
+
+Taking just the numerator f of the rational function on the left, we get a univariate polynomial equation f ( x ) = 0. We then test whether at least one root of f lifts to a point on our curve (i.e., there is a point with the root as x -coordinate).
+
+Remark 2. All complexities are stated in an indeterminate M ( m ) for the complexity of multiplying two degreem polynomials. The complexity of root-finding of a degreem polynomial is O ( M ( m ) log m log mp ) operations in F p [27].
+
+Regarding the complexity of the just described method, the main bottleneck is the construction and root finding of f , i.e., the numerator of (2). The rational function u k can be computed using division polynomials in O ( M ( k 2 ) log k ) time/space and satisfies deg( u k ) = k 2 [28]. Similarly, deg( u g ) = g 2 and so deg( f ) ≤ 2 max( k, g ) 2 deg f . Taking the Karasuba complexity m 1 . 6 for M ( m ), the overall time and space complexity is:
+
+$$O ( M ( \delta ^ { 2 } ) \log \delta \log \delta$$
+
+Due to this complexity in both time and space, we can solve the general DCP problem only for small scalars k and g . In the context of the ZVP attack, the scalar g is small, but the scalar k is a prefix of a private key, i.e., k = d ≥ i . Consequently, the ZVP attack can recover only a few upper digits of the private key d .
+
+Instances of DCP that have been solved in the literature for large k focused on special types of polynomials f . The authors of [1, 22, 24] target DCP f ( k ) in which the polynomial f depends on the coordinates of only one input point. For instance, if f = x 1 + 1, we can first find a point Q that satisfies x Q + 1 = 0 and then compute P = k -1 Q . As our analysis in the following section shows,
+
+most addition formulas do not contain such polynomials, and the attacker is left with the general (hard) DCP problem. Hard DCP problems on the GLV curve, including the secp256k1 , are the focus of this work.
+
+## 3 Classification of formulas
+
+During the ZVP attack, the attacker forces a zero intermediate value (IV) in an addition formula by solving the corresponding DCP. Every formula contains an IV for every finite field operation, allowing the attacker to choose the one with the easiest DCP. In this section, we semi-automatically analyze DCP problems of all addition formulas from the EFD together with almost 200 popular curves. We show that secp256k1 is resistant to EPA attacks, and any ZVP attack on secp256k1 must solve hard DCP problems with the exception of one add formula.
+
+## 3.1 Methodology
+
+Our source of formulas was the updated export 5 of the EFD from [24]. For curves, we have used the database of standard prime field curves from [25], including 144 Weierstrass curves, 15 Edwards curves, 5 Montgomery curves, and 31 Twisted Edwards curves.
+
+Example 1. The following is part of the three-operand code for the projective add formula (1): t0 = Y1*Z2, t1 = Y2*Z1, u = t1-t0, t2 = X1*Z2, t3 = X2*Z1, v = t3-t2, t4 = u^2, t5 = v^3, t6 = v^2,..., A = t12-t9, X3 = v*A, Y3 = t20-t19, Z3 = t21*t22
+
+Given an elliptic curve, every intermediate value (IV) can be expressed as a polynomial function in the coordinates of the input points of the formula:
+
+$$I V = f ( X _ { 1 }, Y _ { 1 }, Z _ { 1 }$$
+
+For instance, for the third IV in Example 1, we have u=(Y2*Z1-Y1*Z2) . For each formula F and a curve E , we consider the set of polynomials I F,E containing the factors of the polynomials of every IV in F . Any ZVP attack on the formula must then use one of the polynomials in I F,E to force a zero IV.
+
+We label any polynomial f ∈ I F,E as easy if it depends on the coordinates of only one point (either X 1 , Y 1 or X 2 , Y 2 ). We have seen in Section 2 that the DCP is easily solvable in such cases. Any other polynomial in I F,E is labeled hard . Moreover, in the context of ZVP attacks, we exclude the following polynomials f from I F,E :
+
+- -easy polynomials f that do not have a solution corresponding to a point on the curve E , including constant polynomials that are trivially without roots.
+
+5 Available at https://github.com/crocs-muni/efd.
+
+- -the few f for which f = 0 depends on the choice of the projective representation of the input point(s). This choice is based on the assumption that a projective randomization of points is in place. It also allows us to transform all polynomials in I F,E to an affine form by putting Z i = 1.
+- -f s.t. f = 0 implies that one of the coordinates of the input or output points (e.g., X3 in Example 1) is 0. Recall that forcing zero coordinates of points is the domain of RPA and EPA attacks (Section 2). We exclude RPA attacks in our analysis of formulas since they do not depend on the choice of formula. We also exclude the general EPA attacks (with the exception of EPA on secp256k1 in Section 3.3) as their analysis has been done in [24].
+- -f s.t. f = 0 implies that the input or output points are of small order or satisfy some trivial condition, i.e., ( X 1 , Y 1 ) = -( X 2 , Y 2 ). Such points should not appear in the SM and can often be used for easier attacks than ZVP. Nevertheless, this assumption depends on the context, so we also recomputed the analysis without it.
+
+All of the above exceptions can be checked automatically, with the exception of the last one, which we did manually. We then classify each formula for each curve as either resistant , semi-resistant , or vulnerable , depending on the properties of I F,E . A formula is resistant if I F,E is empty. Vulnerable formulas have at least one easy polynomial I F,E . Semi-resistant formulas are the remaining ones, i.e., I F,E contains at least one hard polynomial and no easy polynomials. Semi-resistant formulas are vulnerable to ZVP attacks as well, but the underlying DCPs are difficult to solve. Formulas for dbl cannot be semi-resistant as they depend on one input point by definition, and so all of the polynomials in I F,E are easy if there are any.
+
+## 3.2 Results
+
+We have analyzed over 200 formulas with almost 5000 IV polynomials in combination with 195 curves. We present here the results for Weierstrass add and dbl formulas with four popular curves, including the secp256k1 curve. The rest of the results can be found in our repository.
+
+Table 1 shows the results for dbl formulas. For clarity, formulas are grouped by their coordinate systems with the number of formulas in brackets. The coordinate systems are abbreviated: jac for jacobian, proj for projective, mod for modified jacobian, xz for xz, xyz for xyzz. The formulas are divided into either resistant or vulnerable, as per our definition above. The rows further divide the formulas per the number of easy IV polynomials (e.g., resistant formulas have none). For example, for P-256 , there are two vulnerable projective formulas with two easy IV polynomials and twelve resistant jacobian formulas. Clearly, the resistance of formulas depends on the choice of the curve. While most formulas are vulnerable for P-521 , the opposite is true for P-256 . Surprisingly, none of them are vulnerable for secp256k1 . This means that the ZVP attack cannot target any dbl formula from EFD when the secp256k1 curve is used.
+
+Similarly, Table 2 shows the results for add formulas. It turned out that there are no resistant Weierstrass add formulas, and so formulas are only divided into
+
+Table 1: Distribution of IV polynomials for dbl formulas and four popular curves. Formulas are grouped by their coordinate system with their amount in brackets. Each formula is either resistant or vulnerable with the number of easy IV polynomials in rows.
+
+| #IV            | P-256                              | secp256k1                                  | P-384                                               | P-521                                                                       |
+|----------------|------------------------------------|--------------------------------------------|-----------------------------------------------------|-----------------------------------------------------------------------------|
+| resistant      | 0 jac (12) mod (3),xyz(6) proj (9) | jac (12) mod (3), xyz (2) proj (5), xz (5) | jac (2) proj (2) xyz (3)                            | jac (2) proj (2) xyz (3)                                                    |
+| 1              | proj xz (5)                        |                                            | jac (10) mod (3), xyz (3) proj (7), xz (3) proj (2) | jac (4), mod (3) proj (3) xyz (1), xz (3) jac (6), proj (4) xyz (2), xz (2) |
+| vulnerable 3 5 | 2 proj (2)                         |                                            | proj , xz (2)                                       | proj proj (2)                                                               |
+
+semi-resistant or vulnerable. This means that each formula either contains an easy IV polynomial (vulnerable formula) or no easy ones and at least one hard IV polynomial (semi-resistant formula). The number of these polynomials is again in the rows. Since the semi-resistance of formulas did not change significantly between curves, we only show the results for P-256 and secp256k1 . Focusing on secp256k1 , we found the following eleven hard IV polynomials shared between the formulas, which we will use for our attacks (Section 4).
+
+$$\begin{array} {$$
+
+Out of the 36 semi-resistant add formulas: 32 formulas contained only one IV polynomial ( f 1 , f 2 , f 4 or f 5 ), two formulas contained two IV polynomials (both f 1 , f 3 ), one formula contained f 4 , f 6 , f 7 and one formula contained f 1 , f 8 , f 9 , f 10 , f 11 . The overall conclusion for secp256k1 is that the ZVP attack on any classical scalar multiplication algorithm using dbl and add must focus on the add with all but two formulas being semi-resistant with hard DCPs (the exceptions are two variants of the formula by Renes, Costello, and Batina [23]). Furthermore, the amount of possible IVs is limited (only one for most formulas). We have to emphasize that we do not make any claims for formulas that are not in the EFD database.
+
+Curve25519 . To illustrate our results on other operations and curve models, we will summarize our findings for the popular Curve25519 in the Montgomery form. All four formulas for the differential addition are resistant (contain no
+
+Table 2: Distribution of IV polynomials for add formulas and for P-256 and secp256k1 . Formulas are grouped by their coordinate system with their amount in brackets. Each formula is either semi-resistant or vulnerable with the number of hard (for resistant) or easy (for vulnerable) IV polynomials in rows. There are no resistant Short Weierstrass add formulas in EFD.
+
+| #IV            | P-256                                                            | secp256k1                                                      |
+|----------------|------------------------------------------------------------------|----------------------------------------------------------------|
+| semi-resistant | 1 2 jac (22), mod (3), proj (8), xyz (6) 3 4 proj (4), mod (1) 5 | jac (22), mod (3), proj (4), xyz (3) proj (2) mod (1) proj (1) |
+| vulner.        | 2 4 proj (4)                                                     |                                                                |
+|                |                                                                  | proj (2)                                                       |
+
+IV polynomials usable for ZVP). Similar holds for ladder and doubling formulas with the exceptions of xz:ladd-1987-m and xz:dbl-1987-m . Both of these formulas contain an easy IV polynomial X 1 -a , where a is the Montgomery model parameter. Surprisingly, all of the considered Montgomery curves have a solution point for this polynomial ( M-221 , M-511 , Curve383187 or M-383 ) except for Curve25519 . This means that all of the formulas supporting Curve25519 are resistant against ZVP with this curve.
+
+Remark 3. We have treated the detection of zero values as a black-box oracle, assuming the ability to detect operations involving zeroes using side channels. In practice, it might be crucial to distinguish the operations as the gate counts might differ for (modular) addition/subtraction and multiplication. The attacker is expected to require more effort to detect a zero addition than a multiplication by zero [1]. If we consider only multiplication to be detectable, the presented results do not change for Weierstrass formulas. Our repository contains the results in this model as well.
+
+## 3.3 Resistance of secp256k1 to EPA and RPA
+
+We excluded the EPA attack (a special case of ZPV) in our analysis of formulas as it was already done by Sedlacek et al. [24]. The EPA targets a polynomial f , for which f = 0 causes an error during the scalar multiplication. As shown in [24], all known add formulas in the EFD database for short Weierstrass curves offer only one f that could be zero: y 1 + y 2 . The authors focused on the general case and did not consider how the situation changes for particular curves. We will now show that for the secp256k1 (and the general GLV curves) that DCP y 1 + y 2 ( k, g )
+
+has a solution only for three values of k g . Since k corresponds to a prefix of a random secret scalar (target of the EPA attack), the probability of encountering such k and g is negligible, making the secp256k1 curve resistant to EPA.
+
+The GLV curves of the form y 2 = x 3 + b are acted upon by an endomorphism λ ( x, y ) = ( βx, y ), where β ∈ F p is a (nontrivial) third root of 1. If P is a solution to DCP y 1 + y 2 ( k, g ), then Q = kP , G = gP and y Q + y G = 0. Squaring the equation and replacing y 2 Q and y 2 G using the curve equation, we get x 3 Q = x 3 G , which means that either x Q = x G , x Q = βx G or x Q = β 2 x G . These three cases imply, respectively, that either Q = -G , Q = -λG , or Q = -λ 2 G . Consequently, k g ∈ {-1 , -λ, -λ 2 } as claimed.
+
+Similarly for ladd formulas, the only potential zero polynomial is f = x 2 [24]. This means that as long as the curve does not contain points with zero x -coordinate, the curve is resistant to EPA attack. This is the case for secp256k1 as the curve equation is y 2 = x 3 + b with nonsquare b . For the same reason, secp256k1 is resistant to RPA attack, for which a zero coordinate point is necessary. Thus, if the target is secp256k1 , only the general ZVP attack is relevant and is also the focus of the next section.
+
+## 4 ZVP-GLV attack
+
+During the classical ZVP attack as described in Section 2, the attacker needs to find a solution to a DCP f ( k, g ) where k is a small prefix of the private key d and g is the guess on the next digit. The situation changes when the implementation uses the GLV decomposition d = d 0 + d 1 λ (mod n ). The multiscalar multiplication algorithms gradually go through the prefixes of both the scalars d 0 and d 1 at the same time. The attacker would now need to solve DCP f ( k 0 + k 1 λ, g ), where both k 0 , k 1 are small but k 0 + k 1 λ is not. Since the state-of-the-art approach for solving DCP works only for small k , it seems that the ZVP attack cannot be used for implementations using the GLV decomposition. This section shows that the opposite is true:
+
+- -We show that DCP f ( k 0 + k 1 λ, g ) can be solved efficiently for small k 0 , k 1 , g even though k 0 + k 1 λ is a large scalar. Moreover, we can solve such DCPs for t -bit k 0 and t -bit k 1 in a comparable time as DCP f ( k, g ) for a single t -bit k .
+- -We design a ZVP-GLV attack that can recover upper digits of both scalars d 0 , d 1 at the same time. As a result, the ZVP-GLV attack can recover twice as many digits of the secret scalar d when compared to an implementation not using the GLV decomposition.
+
+Firstly, Section 4.1 describes a method for solving DCP f ( k 0 + k 1 λ, g ). In Section 4.2, 4.3 and 4.4, we use the method to attack the Straus-Shamir trick (Algorithm 3) and the interleaving algorithm (Algorithm 2). We also show that one variant of the interleaving algorithm is especially vulnerable to ZVP attack, allowing the attacker to recover the majority of the digits of d (Section 4.5). All of the sections contain experimental results on the secp256k1 curve as well.
+
+Attacker model. The target is a device that performs MSM P ↦→ dP on a GLV curve E/ F p : y 2 = x 3 + b using a fixed secret scalar d = d 0 + d 1 λ (mod n ). Here, n is the order of E ( F p ), λ is the action of an endomorphism ϕ on E ( F p ), where λ 2 + λ +1 = 0 (mod n ). The MSM is done using either Algorithm 3 or Algorithm 2. The scalars d 0 and d 1 have l digits and are encoded in the appropriate representations (GLV-SAC or regular w -NAF). The attacker controls the input point P and can detect (using a suitable side channel) whether a zero appears during the computation of add , i.e., they have an oracle O described in Section 2.2 (we extend this model in Section 4.5). The attacker's goal is to recover as many digits of d as possible using O . All of our experiments are simulated, i.e., we do not perform any side-channel measurements and treat O as a black-box oracle.
+
+## 4.1 DCP on GLV curves
+
+The state-of-the-art approach to solving DCP f ( k, g ), as described in Section 2.3, is to find a root of a univariate polynomial f of degree ≈ 2 max( k, g ) 2 deg f . As we show in Lemma 1, we can extend the approach to DCP f ( k 0 + k 1 λ, g ) where both k 0 , k 1 are small. We construct a polynomial F of degree ≈ 16 max( k 0 , k 1 , g ) 2 deg f and then look for roots of F . The key idea behind the construction of F is that the multiplication-byk map can be replaced by two multiplication-byk i maps while the degree of the map for λ is one, bringing no additional cost.
+
+Lemma 1. Let E/ F p be a GLV curve with an endomorphism ϕ and an action λ . For k 0 , k 1 , g ∈ Z and f ∈ F p [ x 1 , x 2 ] , consider the DCP f ( k 0 + k 1 λ, g ) . There is a polynomial h ∈ F p [ x ] of degree ≤ δ = 16max( k 0 , k 1 , g ) 2 deg f , such that if P ∈ E is a solution to the DCP then x P is a root of h . The polynomial h can be found with the following time and space complexity:
+
+## O ( M ( δ 2 ) log δ log δ 2 p ) .
+
+Proof. Denote u 0 , u 1 , u g ∈ F p ( x ) the rational functions for the x -coordinates of the multiplication maps by k 0 , k 1 ϕ and g , respectively. To construct h , we will substitute u 0 , u 1 , g, f into the Semaev polynomial S 3 [26]. The polynomial S 3 ∈ F p [ X 1 , X 2 , X 3 ] satisfies for any points P 0 + P 1 = P 2 that S 3 ( x P 0 , x P 1 , x P 2 ) = 0. In particular, for any P ∈ E and Q = k 0 P + k 1 λP , we have S 3 ( x k 0 P , x k 1 λP , x Q ) = 0. Since u 0 ( x P ) = x k 0 P , u 1 ( x P ) = x k 1 λP , we can substitute u 0 , u 1 into S 3 : S 3 ( u 0 ( x P ) , u 1 ( x P ) , x Q ) = 0. If P is a solution to the DCP, then f ( x Q , x G ) = 0 where G = gP . We will now assume that the polynomial f ( x 1 , x 2 ) = 0 can be expressed as a x 2 = f ′ ( x 1 ) for a rational function f ′ ∈ F p ( x 1 ) and leave the proof of the general case for Appendix 6.1. Substituting f ′ and g into S 3 , we get S 3 ( u 0 ( x P ) , u 1 ( x P ) , f ′ ( g ( x P ))) = 0. As a result, if h is the denominator of the rational function S 3 ( u 0 ( x ) , u 1 ( x ) , f ′ ( g ( x ))) ∈ F p ( x ) then x P is its root as claimed. The degree of h is given by the degree of f ′ (which is deg f ), the maximum of degrees of u 0 , u 1 , u g and the degree of S 3 (which is 2 in each variable). The complexity of constructing h is dominated by the construction of the maps u 0 , u 1 , u g , and their substitution into S 3 with the complexity discussed in Section 2.3.
+
+Note that Lemma 1 easily extends to DCP f ( k 0 + k 1 λ, λg ) since the rational map for λg is βu g , whereu u g is the rational map for g and β ∈ F p is the action of λ . In principle, our approach works for DCP f ( k 0 + k 1 λ, g 0 + λg 1 ) as well (it requires a higher degree Semeav polynomial S 4 ), but we will not need it.
+
+Figure 2a shows the timings 6 of solving DCP f ( k 0 + k 1 λ ) for scalars k 0 , k 1 of small bit-lengths (2-5 bits) and a selection of IV polynomials that we found in our analysis of formulas for secp256k1 in Section 3. For comparison, Figure 2b shows the timings of solving DCP f ( k ) classically for small k . While solving DCP f ( k ) for 8-bit k can take more than 18 minutes (for f 2 ), solving DCP f ( k 0 + k 1 λ ) for two 4-bit scalars k 0 , k 1 takes less than 14 seconds. In Section 4.2, we will show that this makes the decomposed private key d = d 0 + d 1 λ more vulnerable.
+
+Fig. 2: Timings for solving DCP f ( k 0 + k 1 λ ) and DCP f ( k ) for different polynomials f i and scalar bit-lengths on the secp256k1 curve.
+
+<!-- image -->
+
+<!-- image -->
+
+Using Lemma 1, we can efficiently solve DCP f ( k 0 + k 1 λ ) for small k 0 , k 1 assuming that there is at least one solution. To empirically estimate the probability that a DCP has a solution, we have solved DCP f ( k 0 + k 1 λ ) for all positive 2 -5 bit scalars k 0 , k 1 and all the IV polynomials { f 1 , . . . , f 11 } . For each such DCP instance, we have recorded whether it has at least one solution. Additionally, as we saw in Section 3, some formulas have up to five IV polynomials. Hence, we have combined the results for individual IV polynomials to see how the success rate of finding a solution changes if it is enough to have at least one solution for at least one polynomial from a given set of IV polynomials. Results are in Figure 3 with the number of IV polynomials on the y -axis and the success rate (in percentages) on the x -axis. Each dot represents a set of IV polynomials of size 1 , 2 , 3 , 4 or 5. Surprisingly, the DCP success rate for single polynomials is very low (below 25% for all except for f 6 , f 7 , f 11 ), which limits the ZVP attack
+
+6 All our experiments were computed on a 2.3 GHz Intel Xeon Processor. Our implementation uses C/C++ for the computationally demanding parts and Python with Sagemath for the overall interface.
+
+on formulas with single IVs. With at least three IV polynomials, the average rate is over 50%, and with five IV polynomials, the rate reaches 87%.
+
+The red dots represent the IV polynomials corresponding to add formulas from EFD. The majority of EFD formulas have a 13 -16% success rate. The exceptions are proj:add-2002-bj with 27% (2 polynomials), mod:mmadd-2009-bl with 66% (3 polynomials) and proj:madd-2015-rcb with 70% (5 polynomials). While the success rate is low for almost all formulas, some formulas (and all the polynomial combinations in blue dots) show that the rate can vary over a wide range. This is especially relevant for the development of new formulas.
+
+Fig. 3: Each dot represents a subset of IV polynomials from { f 1 , . . . , f 11 } with their amount on y -axis and the rate of at least one solvable DCP f i ( k 0 + k 1 λ ) problem on the x -axis. The red dots represent EFD add formulas.
+
+<!-- image -->
+
+## 4.2 Description of the ZVP-GLV attack
+
+This section describes a new ZVP attack on implementations using GLV decompositions (ZVP-GLV attack). We target both the Straus-Shamir trick (Algorithm 3) and the interleaving algorithm (Algorithm 2). We will go through the general idea of the attack and then discuss details specific to the individual algorithms.
+
+The general idea of the ZVP-GLV attack follows the idea of the classical ZVP attack: we iteratively recover the upper digits of d 0 , d 1 , where d = d 0 + d 1 λ is the decomposition of the private key. In each iteration, we take a guess of the digits d ( i ) 0 , d ( i ) 1 . To verify our guess, we attempt to invoke a zero during the computation of add with a special input point found as a solution to DCP using Lemma 1. If our guess is correct, then we detect a zero. It might happen that the DCP does not have a solution. As we saw in Figure 3, the probability of that event is relatively high (as high as 88%) unless multiple intermediate polynomials are used. This means that the individual guesses for d ( i ) 0 , d ( i ) 1 might not be verified and we must keep track of all possibilities for the values of d ( i ) 0 , d ( i ) 1 .
+
+We denote K i as the set of candidates for ( d ≥ i 0 , d ≥ i 1 ). We start with K l -1 containing all possible most significant digits of d 0 , d 1 and iteratively transform K i to K i -1 until we reach a limit given by the complexity of DCP.
+
+$$K _ { l - 1 } \to K _ { l - 2 } \to \dots K$$
+
+The sizes of the sets K i might fluctuate, but each K i contains the correct pair of prefixes ( d ≥ i 0 , d ≥ i 1 ). The following steps transform K i to K i -1 :
+
+- -For each candidate pair ( κ 0 , κ 1 ) ∈ K i , we make a guess g 0 , g 1 for the following digits d ( i -1) 0 , d ( i -1) 1 . The set of options for g 0 , g 1 depends on the representation (GLV-SAC for Algorithm 3 or regular w -NAF for Algorithm 2).
+- -For each candidate pair κ 0 , κ 1 and a guess g 0 , g 1 we create an instance of the DCP problem and attempt to find a solution point P using Lemma 1. If we have multiple intermediate polynomials available, we create and solve a DCP for each one of them until a solution is found or we have no more polynomials. Note that some candidate pairs and guesses might have a common solution point (see Remark 1).
+- -Using all found points P , we query the zero detection oracle O ( P ). We reject all candidate pairs and guesses for which a zero was not detected, as they have to be incorrect.
+- -Any of the candidate pairs κ 0 , κ 1 and guesses g 0 , g 1 , for which a zero was detected on the corresponding point P , might be correct as some of them might share the point P . We put ( κ 0 | g 0 , κ 1 | g 1 ) ∈ K i for all of these (where | stands for concatenation).
+- -If no zeros are detected (and so far K i = {} ) for any point P , then the correct candidate pair κ 0 , κ 1 and guess g 0 , g 1 must be one of the ones for which the DCP had no solution point, and so we put all of these in K i . In principle, we should keep the guesses without solutions even if a zero was detected, as we might lose the correct guess g 0 , g 1 due to accidental zeros. We never found this to be the case in our experiments and so we use this heuristic for more efficiency.
+
+At the end, we are left with K l -t , a set of candidate pairs for d ≥ l -t 0 , d ≥ l -t 1 . While the attack targets 2 t digits ( t + t for each d i ), it recovers them with the ambiguity given by the size of K l -t . For comparison between different representations, we will express the amount of information gained in bits. All pairs of prefixes with t digits give us 2 tw bits (where w is the window size for interleaving and w = 2 for GLV-SAC) with log K l -t bits uncertainty. Hence, by the number of recovered bits, we will mean the value 2 wt -log K l -t .
+
+The following subsections describe the details specific to Algorithm 3 and Algorithm 2 and the experimental results. The pseudocodes for the attacks can be found in Appendix 6.2 (Algorithm 4, Algorithm 5 and Algorithm 6).
+
+## 4.3 ZVP-GLV attack on Straus-Shamir trick
+
+The ZVP-GLV attack on the Straus-Shamir trick (Algorithm 3) iteratively uncovers the GLV-SAC representation of the upper bits. This means that ( g 0 , g 1 )
+
+∈ { (1 , 0) , ( -1 , 0) , (1 , 1) , ( -1 , -1) } , using the general notation from above. We will now explain how to construct the DCP problem for GLV-SAC. The rest of the attack follows the general description above.
+
+A guess ( g 0 , g 1 ) for d ( i ) 0 , d ( i ) 1 corresponds to a guess of the input point ( g 0 + g 1 λ ) P ∈ { P, -P, P + λP, -P -λP } . Given a prefix candidate ( κ 0 , κ 1 ), we verify the guess by solving DCP f ( κ 0 + κ 1 λ, g 0 + g 1 λ ), i.e., find P such that f ( x G , x Q ) = 0, where G = ( g 0 + g 1 λ ) P and Q = (2 κ 0 +2 κ 1 λ ) P using Lemma 1. It might seem like a complication that Lemma 1 can only solve DCP f ( κ 0 + κ 1 λ, g ) for small g , while g 0 + g 1 λ is not small. However, we can easily reduce this problem to a DCP with g = 1. Denote γ = 2 g 0 κ 0 +2 g 1 κ 1 -2 g 1 κ 0 + λ (2 g 0 κ 1 -2 g 1 κ 0 ). Then Q = γG , as 2 κ 0 +2 κ 1 λ = γ ( g 0 + g 1 λ ) (using the facts that g 2 0 = 1 , g 0 g 1 = g 2 1 , and λ 2 + λ +1 = 0). This means that G is a solution to DCP f ( γ ). To find P , we just compute P = ( g 0 + g 1 λ ) -1 G .
+
+The experimental results for this attack are in Figure 4a and Figure 4b. For comparison, we also simulated the classical ZVP attack on the regular 2-NAF double-and-add with the results in Figure 4c and Figure 4b. We ran the experiments for four addition EFD formulas with a different number of IV polynomials. The target bits were 4, 6, 8 and 10 for ZVP-GLV and only 4,5,6,7 for the classical ZVP, as more than 7 bits was too time-consuming. Note that these formulas represent the four red clusters in Figure 3 with their DCP solution rate 70%, 66%, 27%, and 16%, respectively. The duration and the recovery rate of both the classical ZVP and our ZVP-GLV attack improve with more IV polynomials. A lower number of IV polynomials causes a lower DCP solution rate, which increases the set of possible candidates K i and the number of DCP problems in each iteration.
+
+Overall, our ZVP-GLV attack was able to recover significantly more bits in less time than the classical ZVP attack. For instance, while the classical ZVP attack took 28 minutes to recover 6.3 bits (with proj:madd-2015-rcb ), our ZVP-GLV attack recovered 7.2 bits in 48 seconds. For proj:add-2009-bl , the ZVP attack took 64 minutes to recover 4.9 bits, and the ZVP-GLV attack managed to recover 5.6 bits in 240 seconds. We also targeted higher bit-lengths for proj:madd-2015-rcb to see the advantage of ZVP-GLV. We were able to recover 16 bits with the ZVP-GLV attack in 230 minutes - the same time it took the classical ZVP attack to recover 7 bits.
+
+## 4.4 ZVP-GLV attack on window interleaving
+
+The interleaving algorithm (Algorithm 2) performs two add operations in each iteration, one for each scalar d 0 , d 1 . Hence, our ZVP-GLV attack targets both additions separately in a similar spirit. We first make a guess g 0 for d ( i ) 0 , verify it and then repeat this for g 1 and d ( i ) 1 . To verify a prefix candidate ( κ 0 , κ 1 ) ∈ K i and a guess g 0 for d ( i ) 0 , we need to find point P such that f ( x G , x Q ) = 0 where G = g 0 P and Q = (2 κ 0 +2 κ 1 λ ) P . This means solving DCP f ( κ 0 + κ 1 λ, g 0 ). For the guess g 1 , the DCP instance is DCP f ( κ 0 + κ 1 λ, g 1 λ ). The ZVP-GLV attack, in this case, uncovers the regular w -NAF representation, which means that it
+
+Fig. 4: Experimental results for the ZVP-GLV attack on the Straus-Shamir trick and the classical ZVP attack on the double-and-add (using secp256k1 ). Figure 4a and Figure 4c show the timings for four formulas (number of IV polynomials in brackets) and four target bits. Figure 4b and Figure 4d shows the average number of recovered bits.
+
+<!-- image -->
+
+can only target multiples of the window size. Figure 6 in Appendix 6.2 shows the experimental results of the attack on the first window for w = 3 , 4 and 5. The recovery rate is lower than that of the Straus-Shamir trick. Still, the attack recovered 5.7 bits (for mod:mmadd-2009-bl ) in 12 seconds, while it took the ZVP attack 32 minutes to recover 5.4 bits.
+
+## 4.5 ZVP-GLV attack on window interleaving (alternative)
+
+This section describes a ZVP-GLV attack on the alternative version of the interleaving Algorithm 2 in which d ( i ) 0 P + d ( i ) 1 λP is computed in each iteration.
+
+For any IV polynomial f , the DCP instance corresponding to the addition d ( i ) 0 P + d ( i ) 1 λP is DCP f ( d ( i ) 0 , d ( i ) 1 λ ). Both d ( i ) 0 , d ( i ) 1 are small integers from {± 1 , ± 3 , . . . , ± (2 w -1) } . On the one hand, this means that no large scalars are involved, and we have an easy instance of DCP. On the other hand, the DCP no longer depends on the accumulated scalar multiple Q , and so if a zero is detected using the simple binary oracle, we have no way of knowing in which iteration. Additionally, the zero might appear in multiple iterations. We will extend our side-channel model and assume that the position of the zero is visible in the traces. This is a reasonable assumption since the number of dbl and add operations is constant. More formally, we will consider a side-channel oracle O ∗ ( P ) ∈ { 0 , 1 } l , which outputs a vector of 1s and 0s for each iteration, indicating whether a zero appeared in the iteration or not.
+
+At the beginning of the attack, we try to solve DCP f ( g 0 , g 1 λ ) for every possible combination g 0 , g 1 ∈ {± 1 , ± 3 , . . . , ± (2 w -1) } . These DCPs contain small scalars and can be solved in trivial time and since they do not depend on
+
+the private key, they can also be precomputed. This gives us a set P of solutions to the DCP problems (some of them might not have a solution). The idea is to query the oracle with all the points from P and record in which iteration a zero was detected and in which not. However, this will not necessarily tell us which guess g 0 , g 1 corresponds to which d ( i ) 0 , d ( i ) 1 as some points might invoke a zero for multiple possibilities of d ( i ) 0 , d ( i ) 1 .
+
+For each P ∈ P we collect a list T P of guesses ( g 0 , g 1 ) for which P invokes a zero. For every solution point P ∈ P , we query the oracle O ∗ ( P ). Since the set T P contains all the possible pairs for which a zero might occur, a zero is detected in iteration i if and only if ( d ( i ) 0 , d ( i ) 1 ) ∈ T P . Repeating this for every P ∈ P , we get that ( d ( i ) 0 , d ( i ) 1 ) ∈ ⋂ P ∈P T P .
+
+As a result, the attack cannot recover the full key on its own and only reduces the space of possible values for the key. The full key can then be recovered using a baby-step giant-step algorithm (see the discussion regarding the discrete logarithm problem below). The extent of the reduction of the space depends on the used IV polynomials and the size w of the windows used in the interleaving.
+
+Figure 5 shows the results of the attack on the secp256k1 curve with window size w = 4 (results for w = 3 , 5 are in Appendix 6.2). We ran the attack with 100 scalars for four selected addition formulas (the number of IV polynomials is in the parentheses) and one fictitious formula containing IV polynomials with a high DCP success rate. The resulting figure is a histogram of the size of the space (in bits) given by the non-recovered d ( i ) 0 , d ( i ) 1 . The average bit-sizes are 98, 94, 162, 210 and 51 for madd-2015-rcb , mmadd-2009-bl , add-2002-bj , add-1998-cmo , { f 1 , f 11 , f 6 , f 7 , f 9 } , respectively. In particular, for mmadd-2009-bl with the 94bit space, this means a reduction of the original 256-bit space by 63% with 47-bit complexity for the baby-step giant-step to find the remaining bits d ( i ) 0 , d ( i ) 1 . For 3% of the private keys, the bit-size of the space was below 70 bits, which might be relevant for attacks on multiple private keys. The space for the fictitious formula has 51 bits. This shows that for any formula with IV polynomials with a high DCP success rate, the private key can be fully recovered. While we have not found any such formula in EFD supporting secp256k1 , it is an important takeaway for standards and developers proposing new formulas to avoid complex formulas with a large number of IV polynomials.
+
+Finding the private key. We will now sketch how to find the private key d in the reduced space. After the ZVP-GLV attack on the interleaving algorithm, we know certain digits of the decomposed parts d 0 , d 1 . We can assume that we know P , Q such that dP = d 0 P + d 1 λP = Q . We can now cut d 0 , d 1 in halves into upper and lower digits, i.e. d 0 = 2 e 0 u 0 + l 0 , d 1 = 2 e 1 u 1 + l 1 . We iterate through the unknown parts of u 0 , u 1 and store the possible values for 2 e 0 u 0 P +2 e 1 u 1 λP . Then, we iterate through the unknown parts of l 0 , l 1 , computing Q -l 0 P -l 1 λP and comparing it with the stored candidates. While this baby-step giant-step approach gives us 50-bit time complexity to recover the unknown 100 bits in Figure 5, it requires to store 2 50 points. Solving this type of problem in constant space is an open problem, e.g., using a variant of Pollard's rho algorithm [11].
+
+Fig. 5: Histogram of the number of unknown bits after the ZVP-GLV attack on the regular 4-NAF interleaving algorithm. The attack was performed on 100 scalars for four different addition formulas and one fictitious formula containing IV polynomials with a high success rate.
+
+<!-- image -->
+
+## 5 Conclusion
+
+Elliptic curves with the GLV decomposition offer a speedup of scalar multiplication. Our new ZVP-GLV attacks show that this, in the end, comes at the price of a less protected scalar in the context of side-channel attacks. In particular, this holds for the curve secp256k1 used by Bitcoin. We have designed and implemented the attacks for the Straus-Shamir trick and the interleaving algorithm multiscalar algorithms for GLV curves used in popular libraries. As our experimental results show, the attacks can recover twice as many bits as the classical ZVP attack. Moreover, for certain implementations of the interleaving, we were able to recover more than 60% of the private key, which would be unfeasible using the classical ZVP attack with hard DCP problems.
+
+Our ZVP classification of formula-curve combinations (Section 3) gave us several important takeaways for standards and developers proposing new formulas for SCA protected implementations. Less complicated formulas with fewer IV polynomials are less vulnerable to ZVP attacks. Our ZVP-GLV attacks then demonstrate that the choice of formula can mean the difference between a full key recovery and a complete ZVP resistance.
+
+The choice of the curve can significantly affect the resistance against ZVP as well. For example, for P-256 , the majority of dbl formulas are resistant, and the opposite is true for P-521 . The secp256k1 curve is resistant to EPA and RPA attacks, and the Curve25519 is resistant to all ZVP attacks with all formulas from EFD. The tools and complete results of our analysis and attacks are available at https://github.com/crocs-muni/dcp-glv.
+
+## Acknowledgements
+
+We thank Sorina Ionica for the initial idea of exploiting small endomorphisms. This project has been made possible in part by a grant from the Cisco University
+
+Research Program Fund, an advised fund of Silicon Valley Community Foundation. V. Suchanek was also supported by the Ph.D. Talent Scholarship - funded by the Brno City Municipality. Computational resources were supplied by the project 'e-Infrastruktura CZ' (e-INFRA LM2018140) provided within the program Projects of Large Research, Development, and Innovations Infrastructures.
+
+## References
+
+- [1] T. Akishita and T. Takagi. 'Zero-Value Point Attacks on Elliptic Curve Cryptosystem'. In: Information Security . Ed. by C. Boyd and W. Mao. Berlin, Heidelberg: Springer Berlin Heidelberg, 2003, pp. 218-233. isbn : 978-3-540-39981-0.
+- [2] R. Bellman and E. Straus. 'Addition chains of vectors (problem 5125)'. In: The American Mathematical Monthly 71.7 (1964), pp. 806-808.
+- [3] D. J. Bernstein, P. Birkner, M. Joye, T. Lange, and C. Peters. 'Twisted Edwards Curves'. In: Progress in Cryptology - AFRICACRYPT 2008 . Ed. by S. Vaudenay. Berlin, Heidelberg: Springer Berlin Heidelberg, 2008, pp. 389-405. isbn : 978-3-540-68164-9.
+- [4] D. J. Bernstein and T. Lange. Explicit-formulas database . 2007. url : http: //hyperelliptic.org/EFD.
+- [5] D. J. Bernstein and T. Lange. SafeCurves: choosing safe curves for ellipticcurve cryptography . 2017. url : https://safecurves.cr.yp.to/.
+- [6] J. W. Bos, C. Costello, H. Hisil, and K. Lauter. 'High-performance scalar multiplication using 8-dimensional GLV/GLS decomposition'. In: Cryptographic Hardware and Embedded Systems-CHES 2013: 15th International Workshop, Santa Barbara, CA, USA, August 20-23, 2013. Proceedings 15 . Springer. 2013, pp. 331-348.
+- [7] S. Bowe. BLS12-381: New zk-SNARK Elliptic Curve Construction . https: //electriccoin.co/blog/new-snark-curve/. 2017. (Visited on 01/16/2024).
+- [8] B. B. Brumley. 'Faster software for fast endomorphisms'. In: Constructive Side-Channel Analysis and Secure Design: 6th International Workshop, COSADE 2015, Berlin, Germany, April 13-14, 2015. Revised Selected Papers 6 . Springer. 2015, pp. 127-140.
+- [9] Certicom Research. SEC 2: Recommended Elliptic Curve Domain Parameters, Version 2.0. 2010. url : https://secg.org/.
+- [10] H. Cohen, A. Miyaji, and T. Ono. 'Efficient elliptic curve exponentiation using mixed coordinates'. In: Advances in Cryptology-ASIACRYPT'98: International Conference on the Theory and Application of Cryptology and Information Security Beijing, China, October 18-22, 1998 Proceedings . Springer. 1998, pp. 51-65.
+- [11] G. De Micheli and N. Heninger. 'Recovering cryptographic keys from partial information, by example'. In: Cryptology ePrint Archive (2020).
+- [12] A. Faz-Hern´ andez, P. Longa, and A. H. S´ anchez. 'Efficient and Secure Algorithms for GLV-Based Scalar Multiplication and Their Implementation on GLV-GLS Curves'. In: Topics in Cryptology - CT-RSA 2014 . Ed. by J.
+
+Benaloh. Cham: Springer International Publishing, 2014, pp. 1-27. isbn : 978-3-319-04852-9.
+
+- [13] S. D. Galbraith, X. Lin, and M. Scott. 'Endomorphisms for Faster Elliptic Curve Cryptography on a Large Class of Curves'. In: Advances in Cryptology - EUROCRYPT 2009 . Ed. by A. Joux. Berlin, Heidelberg: Springer Berlin Heidelberg, 2009, pp. 518-535. isbn : 978-3-642-01001-9.
+- [14] R. P. Gallant, R. J. Lambert, and S. A. Vanstone. 'Faster Point Multiplication on Elliptic Curves with Efficient Endomorphisms'. In: Advances in Cryptology - CRYPTO 2001 . Ed. by J. Kilian. Berlin, Heidelberg: Springer Berlin Heidelberg, 2001, pp. 190-200. isbn : 978-3-540-44647-7.
+- [15] L. Goubin. 'A Refined Power-Analysis Attack on Elliptic Curve Cryptosystems'. In: Public Key Cryptography - PKC 2003 . Ed. by Y. G. Desmedt. Berlin, Heidelberg: Springer Berlin Heidelberg, 2002, pp. 199-211. isbn : 978-3-540-36288-3.
+- [16] M. Hamburg. Fast and compact elliptic-curve cryptography . Cryptology ePrint Archive, Paper 2012/309. https://eprint.iacr.org/2012/309. 2012. url : https://eprint.iacr.org/2012/309.
+- [17] T. Izu and T. Takagi. 'Exceptional Procedure Attack on Elliptic Curve Cryptosystems'. In: Public Key Cryptography - PKC 2003 . Ed. by Y. G. Desmedt. Berlin, Heidelberg: Springer Berlin Heidelberg, 2002, pp. 224239. isbn : 978-3-540-36288-3.
+- [18] M. Joye and M. Tunstall. 'Exponent Recoding and Regular Exponentiation Algorithms'. In: Progress in Cryptology - AFRICACRYPT 2009 . Ed. by B. Preneel. Berlin, Heidelberg: Springer Berlin Heidelberg, 2009, pp. 334-349. isbn : 978-3-642-02384-2.
+- [19] P. Kocher, J. Jaffe, and B. Jun. 'Differential power analysis'. In: Advances in Cryptology-CRYPTO'99: 19th Annual International Cryptology Conference Santa Barbara, California, USA, August 15-19, 1999 Proceedings 19 . Springer. 1999, pp. 388-397.
+- [20] P. Longa and F. Sica. 'Four-dimensional Gallant-Lambert-Vanstone scalar multiplication'. In: Advances in Cryptology-ASIACRYPT 2012: 18th International Conference on the Theory and Application of Cryptology and Information Security, Beijing, China, December 2-6, 2012. Proceedings 18 . Springer. 2012, pp. 718-739.
+- [21] P. L. Montgomery. 'Speeding the Pollard and elliptic curve methods of factorization'. In: Mathematics of computation 48.177 (1987), pp. 243264.
+- [22] C. Murdica, S. Guilley, J.-L. Danger, P. Hoogvorst, and D. Naccache. 'Same Values Power Analysis Using Special Points on Elliptic Curves'. In: Constructive Side-Channel Analysis and Secure Design . Ed. by W. Schindler and S. A. Huss. Berlin, Heidelberg: Springer Berlin Heidelberg, 2012, pp. 183-198. isbn : 978-3-642-29912-4.
+- [23] J. Renes, C. Costello, and L. Batina. 'Complete Addition Formulas for Prime Order Elliptic Curves'. In: Proceedings, Part I, of the 35th Annual International Conference on Advances in Cryptology - EUROCRYPT
+
+2016 - Volume 9665 . Berlin, Heidelberg: Springer-Verlag, 2016, 403-428. isbn : 9783662498897.
+
+- [24] V. Sedlacek, J.-J. Chi-Dom´ ınguez, J. Jancar, and B. B. Brumley. 'A formula for disaster: a unified approach to elliptic curve special-point-based attacks'. In: Advances in Cryptology - ASIACRYPT 2021 . Springer, 2021. isbn : 978-3-030-64837-4.
+- [25] V. Sedl´ aˇ cek, V. Such´ anek, and A. Dufka. DiSSECT:Distinguisher of Standard and Simulated Elliptic Curves via Traits . https://dissect.crocs.fi. muni.cz/.
+- [26] I. Semaev. Summation polynomials and the discrete logarithm problem on elliptic curves . Cryptology ePrint Archive, Paper 2004/031. https://eprint. iacr.org/2004/031. 2004. url : https://eprint.iacr.org/2004/031.
+- [27] J. Von Zur Gathen and J. Gerhard. Modern computer algebra . Cambridge university press, 2013.
+- [28] L. C. Washington. Elliptic curves: number theory and cryptography . CRC press, 2008.
+- [29] P. Wuille. libsecp256k1 . https://github.com/bitcoin-core/secp256k1. 2013.
+
+## 6 Appendix
+
+## 6.1 Full proof of Lemma 1
+
+Denote u 0 , u 1 , u g ∈ F p ( x ) the rational functions for x -coordinates of multiplication maps by k 0 , k 1 ϕ and g , respectively. Let S 3 ∈ F p [ X 1 , X 2 , X 3 ] be the Semaev polynomial. For a solution P of the DCP, we have
+
+$$S _ { 3 } ( x _ { Q }, x _ { k _ { 0 } P }, x _ { k _ { 1 } \lambda P } ) = S _ { 3 } ( x _ { Q }, u _ { 0 } ( x _ { P } ), u _ { 1 } ( x _ { P } ) ) = 0,$$
+
+where Q = k 0 P + k 1 λP and f ( x G , x Q ) = 0, G = gP . We can substitute u g into f and get f ( u g ( x P ) , x Q ) = 0. Consider the rational function S 3 ( x 2 , u 0 ( x ) , u 1 ( x )) as a quadratic polynomial S ′ 3 ( x 2 ) in x 2 with coefficients in F p ( x ), i.e. S ′ 3 ∈ F p ( x )[ x 2 ]. Denote r 1 , r 2 the roots of the S ′ 3 . Based on Vieta's formulas, any polynomial expression that is symmetric in r 1 , r 2 can be expressed using the coefficients of S ′ 3 - rational functions in x . In particular:
+
+$$h = f ( u _ { g } ( x ), r _ { 1 } ) f ( u _ { g } ( x ), r _ { 2 } ) \in \mathbb { F } _ { p } ( x ).$$
+
+Since f ( u g ( x P ) , x Q ) = 0 then F ( x P ) = 0. Note that if h vanishes then either f ( x 1 , r 1 ) = 0 or f ( x 1 , r 2 ) = 0, in which case any point P is a solution to the DCP. The degree of h is 2( g 2 +deg r 1 ) deg f = 2( g 2 +deg(2 k 2 0 +2 k 2 1 )) deg f since the Semaev polynomial S 3 has degree 2 in each variable. This can be bounded by δ = 16 m 2 deg f where m = max( k 0 , k 1 , g ). The complexity of constructing h is dominated by the construction of the maps u 0 , u 1 , u g , and their substitution into S 3 with the complexity discussed in Section 2.3.
+
+## 6.2 Algorithms and graphs referenced in the text
+
+## Algorithm 4: ZVP-GLV attack on the Straus-Shamir trick.
+
+```
+input : A set K i +1 of candidates pairs for d ≥ i +1 0 , d ≥ i +1 1 output: A set K i of candidate pairs for d ≥ i 0 , d ≥ i 1 1 K i , U i ←{} , {} 2 foreach ( κ 0 , κ 1 ) ∈ K i +1 do 3 for ( g 0 , g 1 ) ∈ { (1 , 0) , ( -1 , 0) , (1 , 1) , ( -1 , -1) } do 4 D ← DCP f ( g 0 κ 0 + λ ( g 0 κ 1 -g 1 κ 0 )) 5 Find a solution point P to D using Lemma 1 6 if no solution then add (2 κ 0 + g 0 , 2 κ 1 + g 1 ) to U i 7 else if O ( P ) = 1 then add (2 κ 0 + g 0 , 2 κ 1 + g 1 ) to K i 8 if K i is empty then K i ← U i 9 return K i
+```
+
+```
+Algorithm 5: ZVP-GLV attack on the regular w -NAF interleaving. input : A set K i +1 of candidates pairs for d ≥ i +1 0 , d ≥ i +1 1 output: A set K i of candidate pairs for d ≥ i 0 , d ≥ i 1 1 K i , U i ←{} , {} 2 foreach ( κ 0 , κ 1 ) ∈ K i +1 do 3 for g 0 ∈ {± 1 , . . . , ± (2 w -1) } do 4 D ← DCP f (2 w κ 0 +2 w λκ 1 , g 0 ) 5 Find a solution point P to D using Lemma 1 6 if no solution then add (2 w κ 0 + g 0 , 2 w κ 1 ) to U i 7 else if O ( P ) = 1 then add (2 w κ 0 + g 0 , 2 w κ 1 ) to K i 8 if K i is empty then K i ← U i 9 return K i
+```
+
+## Algorithm 6: ZVP-GLV attack on regular w -NAF interleaving.
+
+```
+input : Oracle O ∗ , integer t , polynomial f output: A set C i of candidates pairs of w -NAF bits d ( i ) 0 , d ( i ) 1 for each i 1 G ← {± 1 , . . . , ± (2 w -1) } 2 2 P ← {} 3 for ( g 0 , g 1 ) ∈ G do 4 Attempt to find a solution point P to DCP f ( g 0 , g 1 ) and store in P 5 for P ∈ P do 6 Store in T P all ( g 0 , g 1 ) ∈ G for which P is a solution to DCP f ( g 0 , g 1 ) 7 for i = 0 to l -1 do 8 C i ←G 9 for P ∈ P do 10 if O ∗ ( P ) i = 1 then C i ← C i ∩ T P 11 else C i ← C i \ T P 12 return C 0 , . . . , C l -1
+```
+
+<!-- image -->
+
+Fig. 6: Experimental results for the ZVP-GLV attack on the interleaving algorithm. Figure 6a shows the timings for four formulas and three target bits. Figure 6b shows the average number of recovered bits.
+
+<!-- image -->
+
+(b) w = 5
+
+Fig. 7: Histogram of the number of unknown bits after the ZVP-GLV attack on the regular 3-NAF and 5-NAF interleaving algorithm. The attack was performed on 100 scalars for four different addition formulas and one fictitious formula containing IV polynomials with a high success rate.
