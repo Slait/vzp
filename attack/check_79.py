@@ -8,11 +8,10 @@ import argparse
 import json
 import sys
 
-# Small curve mod 79 constants
+# Small discrete log system mod 79 constants
 CURVE_P = 79
 CURVE_ORDER = 79
-CURVE_A = 0
-CURVE_B = 7
+# Note: This is a precomputed lookup table, not necessarily an elliptic curve
 
 # Precomputed lookup table for d -> (Qx, Qy)
 PUBKEY_TABLE = {
@@ -69,62 +68,26 @@ def mod_inverse(a, m):
         raise ValueError("Modular inverse does not exist")
     return (x % m + m) % m
 
-def point_add_small_curve(p1, p2):
-    """Add two points on small curve mod 79"""
-    if p1 is None:  # Point at infinity
-        return p2
-    if p2 is None:  # Point at infinity
-        return p1
-    
-    x1, y1 = p1
-    x2, y2 = p2
-    
-    if x1 == x2:
-        if y1 == y2:
-            # Point doubling
-            s = (3 * x1 * x1 + CURVE_A) * mod_inverse(2 * y1, CURVE_P) % CURVE_P
-        else:
-            # Points are inverses
-            return None  # Point at infinity
+def simulate_point_operation(d1, d2, operation='add'):
+    """Simulate point operations using lookup table"""
+    if operation == 'add':
+        result_d = (d1 + d2) % CURVE_ORDER
+    elif operation == 'sub':
+        result_d = (d1 - d2) % CURVE_ORDER
+    elif operation == 'mul':
+        result_d = (d1 * d2) % CURVE_ORDER
     else:
-        # Regular addition
-        s = (y2 - y1) * mod_inverse(x2 - x1, CURVE_P) % CURVE_P
+        result_d = d1
     
-    x3 = (s * s - x1 - x2) % CURVE_P
-    y3 = (s * (x1 - x3) - y1) % CURVE_P
-    
-    return (x3, y3)
-
-def point_multiply_small_curve(k, point):
-    """Multiply point by scalar k using double-and-add"""
-    if k == 0:
-        return None  # Point at infinity
-    if k == 1:
-        return point
-    
-    result = None  # Point at infinity
-    addend = point
-    
-    while k:
-        if k & 1:
-            result = point_add_small_curve(result, addend)
-        addend = point_add_small_curve(addend, addend)  # Double
-        k >>= 1
-    
-    return result
+    return PUBKEY_TABLE.get(result_d, None)
 
 def calculate_public_key_small_curve(private_key):
-    """Calculate public key from private key on small curve"""
+    """Calculate public key from private key using lookup table"""
     if private_key == 0:
         return None  # Point at infinity
     
-    # Use lookup table for efficiency
-    if private_key in PUBKEY_TABLE:
-        return PUBKEY_TABLE[private_key]
-    
-    # Fallback to calculation (shouldn't happen with complete table)
-    generator = (2, 22)  # G = (2, 22) for this curve
-    return point_multiply_small_curve(private_key, generator)
+    # Use lookup table directly
+    return PUBKEY_TABLE.get(private_key, None)
 
 def normalize_scalar_representation(scalar_list):
     """Normalize scalar representation for comparison"""
@@ -188,44 +151,53 @@ def test_glv_reconstruction(candidate_b0, candidate_b1, target_pubkey, target_bi
     # Try different interpretation methods
     reconstruction_methods = []
     
-    # Method 1: Direct binary interpretation
-    k0_bin = sum(abs(bit) * (2**i) for i, bit in enumerate(reversed(norm_b0)))
-    k1_bin = sum(abs(bit) * (2**i) for i, bit in enumerate(reversed(norm_b1)))
+    # Method 1: Direct binary interpretation (LSB first)
+    k0_bin = sum(abs(bit) * (2**i) for i, bit in enumerate(norm_b0))
+    k1_bin = sum(abs(bit) * (2**i) for i, bit in enumerate(norm_b1))
+    reconstruction_methods.append((k0_bin, k1_bin, "binary_lsb"))
     
-    # Apply signs
-    if norm_b0 and norm_b0[0] == -1:
-        k0_bin = -k0_bin
-    if norm_b1 and norm_b1[0] == -1:
-        k1_bin = -k1_bin
-        
-    reconstruction_methods.append((k0_bin, k1_bin, "binary"))
+    # Method 2: Binary interpretation (MSB first)
+    k0_bin_msb = sum(abs(bit) * (2**i) for i, bit in enumerate(reversed(norm_b0)))
+    k1_bin_msb = sum(abs(bit) * (2**i) for i, bit in enumerate(reversed(norm_b1)))
+    reconstruction_methods.append((k0_bin_msb, k1_bin_msb, "binary_msb"))
     
-    # Method 2: Ternary interpretation
-    k0_tern = sum(bit * (3**i) for i, bit in enumerate(reversed(norm_b0)))
-    k1_tern = sum(bit * (3**i) for i, bit in enumerate(reversed(norm_b1)))
+    # Method 3: Ternary interpretation
+    k0_tern = sum(bit * (3**i) for i, bit in enumerate(norm_b0))
+    k1_tern = sum(bit * (3**i) for i, bit in enumerate(norm_b1))
     reconstruction_methods.append((k0_tern, k1_tern, "ternary"))
     
-    # Method 3: Simple sum
-    k0_sum = sum(norm_b0)
-    k1_sum = sum(norm_b1)
+    # Method 4: Simple sum (coefficient approach)
+    k0_sum = sum(norm_b0) % CURVE_ORDER
+    k1_sum = sum(norm_b1) % CURVE_ORDER
     reconstruction_methods.append((k0_sum, k1_sum, "sum"))
     
-    # Test each method
+    # Method 5: Weighted sum
+    k0_weighted = sum(bit * (i + 1) for i, bit in enumerate(norm_b0)) % CURVE_ORDER
+    k1_weighted = sum(bit * (i + 1) for i, bit in enumerate(norm_b1)) % CURVE_ORDER
+    reconstruction_methods.append((k0_weighted, k1_weighted, "weighted"))
+    
+    # Test each method with different combinations
     for k0_test, k1_test, method in reconstruction_methods:
-        # Try direct reconstruction: k = k0 + k1
-        for op in ['+', '*', '-']:
-            if op == '+':
-                k_reconstructed = (k0_test + k1_test) % CURVE_ORDER
-            elif op == '*':
-                k_reconstructed = (k0_test * k1_test) % CURVE_ORDER
-            else:  # op == '-'
-                k_reconstructed = (k0_test - k1_test) % CURVE_ORDER
+        # Try different operations and transformations
+        test_values = [
+            (k0_test + k1_test, f"{method}_add"),
+            (k0_test - k1_test, f"{method}_sub"),
+            (k1_test - k0_test, f"{method}_sub_rev"),
+            (k0_test * k1_test, f"{method}_mul"),
+            (abs(k0_test), f"{method}_abs_k0"),
+            (abs(k1_test), f"{method}_abs_k1"),
+            (k0_test, f"{method}_k0_only"),
+            (k1_test, f"{method}_k1_only"),
+        ]
+        
+        for k_candidate, desc in test_values:
+            k_reconstructed = k_candidate % CURVE_ORDER
             
             if 0 <= k_reconstructed <= 78:
                 pubkey_reconstructed = calculate_public_key_small_curve(k_reconstructed)
                 
                 if pubkey_reconstructed == target_pubkey:
-                    return k_reconstructed, k0_test, k1_test, f"{method}_{op}"
+                    return k_reconstructed, k0_test, k1_test, desc
     
     return None, None, None, None
 

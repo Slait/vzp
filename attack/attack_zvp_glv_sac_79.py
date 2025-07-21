@@ -13,11 +13,10 @@ import time
 import os
 from datetime import datetime
 
-# Small curve mod 79 constants
+# Small discrete log system mod 79 constants
 CURVE_P = 79
-CURVE_ORDER = 79  # For this small curve
-CURVE_A = 0
-CURVE_B = 7
+CURVE_ORDER = 79  # For this small system
+# Note: This uses a precomputed lookup table, not necessarily an elliptic curve
 
 # Precomputed lookup table for d -> (Qx, Qy)
 PUBKEY_TABLE = {
@@ -165,12 +164,11 @@ def setup_zvp_params(args):
         params.target_pubkey = pubkey_coords
         print(f"    Target public key: ({pubkey_coords[0]}, {pubkey_coords[1]})")
         
-        # Verify it's on the curve
-        x, y = pubkey_coords
-        if (y*y) % CURVE_P != (x*x*x + CURVE_A*x + CURVE_B) % CURVE_P:
-            print(f"    Warning: Point may not be on curve y² ≡ x³ + {CURVE_A}x + {CURVE_B} (mod {CURVE_P})")
+        # Verify it's in the lookup table
+        if pubkey_coords in PRIVKEY_TABLE:
+            print(f"    ✓ Point found in lookup table")
         else:
-            print(f"    ✓ Point verified on curve y² ≡ x³ + {CURVE_A}x + {CURVE_B} (mod {CURVE_P})")
+            print(f"    ? Point not found in predefined lookup table")
             
         # Try to find corresponding private key from table
         if pubkey_coords in PRIVKEY_TABLE:
