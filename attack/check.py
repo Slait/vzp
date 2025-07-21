@@ -416,6 +416,33 @@ def check_attack_results_simple(json_file, private_key, verbose=False):
             print(f"    Variant k1{k1_offset:+d}: k0={k0_alt}, k1={k1_alt}")
             print(f"      GLV-SAC bits: b0={variant_b0}, b1={variant_b1}")
             
+            # Calculate and display public key for this GLV decomposition
+            try:
+                # Reconstruct private key from GLV components
+                reconstructed_private = reconstruct_private_key_from_glv(k0_alt, k1_alt)
+                
+                # Calculate public key
+                pubkey_from_glv = calculate_public_key(reconstructed_private)
+                
+                if pubkey_from_glv:
+                    # Format as uncompressed public key (04 + 64 hex chars for x + 64 hex chars for y)
+                    pubkey_hex = f"04{pubkey_from_glv[0]:064x}{pubkey_from_glv[1]:064x}"
+                    print(f"      Public key k0+k1*λ: {pubkey_hex}")
+                    
+                    # Get target public key for comparison
+                    expected_pubkey = calculate_public_key(private_key)
+                    
+                    # Verify it matches expected
+                    if expected_pubkey and pubkey_from_glv == expected_pubkey:
+                        print(f"      ✓ Matches target public key")
+                    elif expected_pubkey:
+                        print(f"      ✗ Does NOT match target public key")
+                else:
+                    print(f"      ✗ Could not calculate public key")
+                    
+            except Exception as e:
+                print(f"      ✗ Error calculating public key: {e}")
+            
             # Check if this variant matches any attack candidate
             for i, (candidate_b0, candidate_b1) in enumerate(scalars):
                 norm_cand_b0 = normalize_scalar_representation(candidate_b0)
@@ -534,7 +561,12 @@ def check_attack_results_simple(json_file, private_key, verbose=False):
                     if reconstructed_pubkey == target_pubkey:
                         print(f"      ✓ EXACT MATCH! k0={k0_test}, k1={k1_test} (method: {method})")
                         print(f"        Reconstructed private key: 0x{reconstructed_private:x}")
-                        print(f"        Matches target pubkey perfectly!")
+                        
+                        # Display public key
+                        pubkey_hex = f"04{reconstructed_pubkey[0]:064x}{reconstructed_pubkey[1]:064x}"
+                        print(f"        Public key k0+k1*λ: {pubkey_hex}")
+                        print(f"        ✓ Matches target pubkey perfectly!")
+                        
                         best_match = (k0_test, k1_test, reconstructed_private)
                         glv_matches_found += 1
                         break
@@ -543,6 +575,12 @@ def check_attack_results_simple(json_file, private_key, verbose=False):
                 if reconstructed_private == private_key:
                     print(f"      ✓ PRIVATE KEY MATCH! k0={k0_test}, k1={k1_test} (method: {method})")
                     print(f"        Reconstructed private key matches input!")
+                    
+                    # Display public key for this match too
+                    if reconstructed_pubkey:
+                        pubkey_hex = f"04{reconstructed_pubkey[0]:064x}{reconstructed_pubkey[1]:064x}"
+                        print(f"        Public key k0+k1*λ: {pubkey_hex}")
+                    
                     if not best_match:
                         best_match = (k0_test, k1_test, reconstructed_private)
                         glv_matches_found += 1
