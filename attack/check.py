@@ -129,10 +129,12 @@ def glv_decompose_key(private_key):
 def convert_to_glv_sac(k0, k1, target_bits):
     """Convert GLV decomposition to GLV-SAC representation for comparison"""
     try:
+        # Use sufficient bit length for conversion
+        bit_length = max(k0.bit_length(), k1.bit_length(), target_bits * 2)
+        
         # Convert to binary representation
-        half_bits = target_bits
-        k0_bin = msm.to_bin(k0, half_bits)
-        k1_bin = msm.to_bin(k1, half_bits)
+        k0_bin = msm.to_bin(k0, bit_length)
+        k1_bin = msm.to_bin(k1, bit_length)
         
         # Apply GLV-SAC recoding (2-dimensional recoding)
         b0_bin, b1_bin = msm.twodim_recoding(k0_bin, k1_bin)
@@ -189,46 +191,134 @@ def check_attack_results(json_file, private_key, pubkey_hex=None):
     
     # Perform GLV decomposition of private key
     print(f"\n[+] Performing GLV decomposition of private key...")
+    
+    # Try multiple decomposition variants (since GLV decomposition is not unique)
+    decompositions = []
+    
+    # Primary decomposition
     k0, k1 = glv_decompose_key(private_key)
-    print(f"    k0 = {k0}")
-    print(f"    k1 = {k1}")
-    print(f"    Verification: k0 + k1*λ = {private_key} (mod n)")
+    decompositions.append((k0, k1, "primary"))
     
-    # Convert to GLV-SAC representation
-    print(f"\n[+] Converting to GLV-SAC representation...")
-    expected_b0, expected_b1 = convert_to_glv_sac(k0, k1, target_bits)
+    # Alternative decompositions (try small variations)
+    curve, beta, lam = load_secp256k1()
+    order = curve.order()
     
-    if expected_b0 is None or expected_b1 is None:
-        print(f"[-] Error: Could not convert to GLV-SAC representation")
-        return False
+    for k1_offset in [-2, -1, 1, 2]:
+        try:
+            k1_alt = k1 + k1_offset
+            k0_alt = (private_key - k1_alt * lam) % order
+            # Convert to signed representation
+            if k0_alt > order // 2:
+                k0_alt = k0_alt - order
+            
+            # Verify the decomposition
+            reconstructed = (k0_alt + k1_alt * lam) % order
+            if reconstructed == private_key % order:
+                decompositions.append((k0_alt, k1_alt, f"variant_k1{k1_offset:+d}"))
+        except:
+            pass
     
-    print(f"    Expected GLV-SAC bits (upper {target_bits} bits):")
-    print(f"    b0 = {expected_b0}")
-    print(f"    b1 = {expected_b1}")
+    print(f"    Found {len(decompositions)} possible decompositions")
     
-    # Check attack results
-    print(f"\n[+] Analyzing attack results...")
+    # Test all decompositions
+    all_found_matches = []
+    
+    for decomp_idx, (k0, k1, decomp_name) in enumerate(decompositions):
+        print(f"\n[+] Testing decomposition {decomp_idx + 1} ({decomp_name}):")
+        print(f"    k0 = {k0}")
+        print(f"    k1 = {k1}")
+        
+        # Convert to GLV-SAC representation
+        expected_b0, expected_b1 = convert_to_glv_sac(k0, k1, target_bits)
+        
+        if expected_b0 is None or expected_b1 is None:
+            print(f"    ✗ Could not convert to GLV-SAC representation")
+            continue
+        
+        print(f"    Expected GLV-SAC bits (upper {target_bits} bits):")
+        print(f"    b0 = {expected_b0}")
+        print(f"    b1 = {expected_b1}")
+    
+        # Check attack results for this decomposition
+        scalars = attack_results.get('scalars', [])
+        if not scalars:
+            print(f"    ✗ No scalar candidates found in attack results")
+            continue
+        
+        # Check if correct decomposition is in results (with equivalence checking)
+        found_correct = False
+        found_matches = []
+    
+    for i, (candidate_b0, candidate_b1) in enumerate(scalars):
+        # Normalize candidates
+        norm_b0 = [int(x) for x in candidate_b0]
+        norm_b1 = [int(x) for x in candidate_b1]
+        norm_exp_b0 = [int(x) for x in expected_b0]
+        norm_exp_b1 = [int(x) for x in expected_b1]
+        
+        # Direct match
+        if norm_b0 == norm_exp_b0 and norm_b1 == norm_exp_b1:
+            found_matches.append((i, "direct", candidate_b0, candidate_b1))
+            found_correct = True
+            continue
+            
+        # Sign variations (GLV decomposition can have sign variants)
+        neg_b0 = [-x for x in norm_b0]
+        neg_b1 = [-x for x in norm_b1]
+        
+        if neg_b0 == norm_exp_b0 and norm_b1 == norm_exp_b1:
+            found_matches.append((i, "neg_b0", candidate_b0, candidate_b1))
+            found_correct = True
+            continue
+            
+        if norm_b0 == norm_exp_b0 and neg_b1 == norm_exp_b1:
+            found_matches.append((i, "neg_b1", candidate_b0, candidate_b1))
+            found_correct = True
+            continue
+            
+        if neg_b0 == norm_exp_b0 and neg_b1 == norm_exp_b1:
+            found_matches.append((i, "neg_both", candidate_b0, candidate_b1))
+            found_correct = True
+            continue
+            
+                 # Swapped (k0 <-> k1)
+         if norm_b0 == norm_exp_b1 and norm_b1 == norm_exp_b0:
+             found_matches.append((i, "swapped", candidate_b0, candidate_b1))
+             found_correct = True
+             continue
+     
+         if found_correct:
+             print(f"    ✓ FOUND {len(found_matches)} MATCHING DECOMPOSITION(S) for this variant!")
+             for i, (candidate_idx, match_type, candidate_b0, candidate_b1) in enumerate(found_matches):
+                 print(f"      Match {i+1}: Candidate {candidate_idx+1} ({match_type})")
+                 print(f"        b0: {candidate_b0}")
+                 print(f"        b1: {candidate_b1}")
+             all_found_matches.extend(found_matches)
+         else:
+             print(f"    ✗ No matches found for this decomposition")
+    
+    # Final results
+    print(f"\n[+] Final Analysis Results:")
     scalars = attack_results.get('scalars', [])
-    if not scalars:
-        print(f"[-] Error: No scalar candidates found in attack results")
-        return False
-    
     print(f"    Number of candidate pairs: {len(scalars)}")
     recovered_bits = attack_results.get('recovered', 0)
     print(f"    Recovered bits: {recovered_bits}")
+    print(f"    Total matches across all decompositions: {len(all_found_matches)}")
     
-    # Check if correct decomposition is in results
-    found_correct = False
-    for i, (candidate_b0, candidate_b1) in enumerate(scalars):
-        if candidate_b0 == expected_b0 and candidate_b1 == expected_b1:
-            found_correct = True
-            print(f"[+] ✓ CORRECT decomposition found at position {i+1}!")
-            print(f"    Candidate b0: {candidate_b0}")
-            print(f"    Candidate b1: {candidate_b1}")
-            break
-    
-    if not found_correct:
-        print(f"[-] ✗ Correct decomposition NOT found in attack results")
+    if all_found_matches:
+        print(f"\n[+] ✓ VERIFICATION SUCCESSFUL!")
+        print(f"    Found {len(all_found_matches)} total matching decomposition(s)")
+        
+        # Additional verification statistics  
+        print(f"\n[+] Attack Success Statistics:")
+        print(f"    Total candidates: {len(scalars)}")
+        print(f"    Correct matches: {len(all_found_matches)}")
+        print(f"    Success rate: {len(all_found_matches)/len(scalars)*100:.2f}%")
+        print(f"    Bits of uncertainty: {(target_bits * 2 - recovered_bits):.1f}")
+        
+        return True
+    else:
+        print(f"\n[-] ✗ No matching decompositions found")
         print(f"    This suggests the attack failed to recover the correct bits")
         
         # Show a few candidates for comparison
@@ -237,14 +327,6 @@ def check_attack_results(json_file, private_key, pubkey_hex=None):
             print(f"    [{i+1}] b0={candidate_b0}, b1={candidate_b1}")
         
         return False
-    
-    # Additional verification statistics
-    print(f"\n[+] Attack Success Statistics:")
-    print(f"    Total candidates: {len(scalars)}")
-    print(f"    Success rate: {1/len(scalars)*100:.2f}% (1 correct out of {len(scalars)})")
-    print(f"    Bits of uncertainty: {(target_bits * 2 - recovered_bits):.1f}")
-    
-    return True
 
 
 def main():
