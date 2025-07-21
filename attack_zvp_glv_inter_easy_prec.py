@@ -14,16 +14,27 @@ import json
 import time
 from datetime import datetime
 
-# Добавляем путь к модулям атаки
-sys.path.append(os.path.join(os.path.dirname(__file__), 'attack'))
-
 try:
-    from attack import utils
-    from attack.zvp_glv_inter_easy_prec import zvp_glv_interleaving_easy_regular
+    # Добавляем attack в путь и импортируем SageMath
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'attack'))
+    
     from sage.all import ZZ, Integer
+    print("🔬 SageMath импортирован успешно")
+    
+    # Теперь импортируем модули атаки
+    import utils
+    from zvp_glv_inter_easy_prec import zvp_glv_interleaving_easy_regular
+    print("🔧 Модули атаки импортированы успешно")
+    
 except ImportError as e:
     print(f"❌ Ошибка импорта: {e}")
-    print("Убедитесь, что установлен SageMath и доступны модули атаки")
+    if "sage" in str(e).lower():
+        print("📝 Для работы скрипта требуется SageMath:")
+        print("   Ubuntu/Debian: sudo apt-get install sagemath")
+        print("   Conda: conda install -c conda-forge sage")
+        print("   Или запустите через: sage -python attack_zvp_glv_inter_easy_prec.py")
+    else:
+        print("Убедитесь, что доступны модули атаки в папке attack/")
     sys.exit(1)
 
 

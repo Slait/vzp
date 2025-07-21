@@ -56,6 +56,8 @@ sage -python attack_zvp_glv_inter_easy_prec.py \
   --save attack_results.json
 ```
 
+**📖 Подробная инструкция по установке SageMath**: см. файл `SETUP_SAGEMATH.md`
+
 ## Параметры командной строки
 
 - `--pubkey` - Публичный ключ (128 hex символов или 130 с префиксом '04') **[ОБЯЗАТЕЛЬНО]**
@@ -131,8 +133,46 @@ JSON файл содержит:
 
 Использование для атак на реальные системы без разрешения владельца является незаконным.
 
+## Устранение проблем
+
+### ❌ "No module named 'sage'"
+**Решение**: Установите SageMath или используйте демо версию
+```bash
+# Установка SageMath
+sudo apt-get install sagemath
+
+# Или используйте демо
+python3 attack_zvp_glv_inter_easy_prec_demo.py --help
+```
+
+### ❌ "module 'utils' has no attribute 'register_submatch'"
+**Решение**: Запускайте скрипт из корневой папки проекта
+```bash
+# Убедитесь, что находитесь в корне проекта
+ls attack/  # должна показать файлы attack/
+
+# Запускайте оттуда
+sage -python attack_zvp_glv_inter_easy_prec.py --help
+```
+
+### ❌ "Публичный ключ должен содержать 128 hex символов"
+**Решение**: Скрипт автоматически удаляет префикс '04'
+```bash
+# Оба варианта корректны:
+--pubkey ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a26302b195386bea3f5f002dc033b92cfc2c9e71b586302b09cfe535e1ff290b1b5ac
+--pubkey 04ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a26302b195386bea3f5f002dc033b92cfc2c9e71b586302b09cfe535e1ff290b1b5ac
+```
+
+### ❌ "Отсутствуют предвычисленные данные"
+**Решение**: Это нормально, реальная атака требует DCP данных
+```bash
+# Используйте демо версию для тестирования
+python3 attack_zvp_glv_inter_easy_prec_demo.py --pubkey YOUR_KEY --w 4
+```
+
 ## Поддержка
 
-Для получения полной документации см. `zvp_glv_inter_easy_prec.md`
-
-Для технических вопросов изучите код в папке `attack/`
+- 📖 **Полная документация**: `zvp_glv_inter_easy_prec.md`
+- 🔧 **Установка SageMath**: `SETUP_SAGEMATH.md`  
+- 💻 **Исходный код**: папка `attack/`
+- 🧪 **Демо версия**: `attack_zvp_glv_inter_easy_prec_demo.py`
