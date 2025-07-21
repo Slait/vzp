@@ -348,8 +348,8 @@ def main():
         '--polynomial',
         type=int,
         default=0,
-        choices=range(0, 10),
-        help='Индекс полинома secp256k1 (по умолчанию: 0)'
+        choices=range(0, 13),
+        help='Индекс полинома secp256k1 (0-12, по умолчанию: 0)'
     )
     
     parser.add_argument(

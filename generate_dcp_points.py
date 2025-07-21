@@ -110,15 +110,20 @@ def setup_registers_for_polynomial(polynomial_index, verbose=True):
     # Получаем secp256k1 полиномы
     secp256k1_polynomials = utils.get_secp256k1_polynomials(extended=True)
     
-    if polynomial_index >= len(secp256k1_polynomials):
-        raise ValueError(f"Индекс полинома {polynomial_index} вне диапазона (доступно: 0-{len(secp256k1_polynomials)-1})")
+    # Преобразуем словарь в список для индексации
+    polynomial_list = list(secp256k1_polynomials.values())
+    polynomial_keys = list(secp256k1_polynomials.keys())
+    
+    if polynomial_index >= len(polynomial_list):
+        raise ValueError(f"Индекс полинома {polynomial_index} вне диапазона (доступно: 0-{len(polynomial_list)-1})")
     
     # Добавляем выбранный полином
-    f, g = secp256k1_polynomials[polynomial_index]
+    f, g = polynomial_list[polynomial_index]
     registers.add_tuple(f, g)
     
     if verbose:
-        print(f"📊 Добавлен полином #{polynomial_index}: {registers.to_strings()[0]}")
+        polynomial_name = polynomial_keys[polynomial_index]
+        print(f"📊 Добавлен полином #{polynomial_index} ({polynomial_name}): {registers.to_strings()[0]}")
     
     return registers
 
@@ -375,7 +380,7 @@ def main():
         '--polynomial',
         type=int,
         default=0,
-        help='Индекс полинома secp256k1 (по умолчанию: 0)'
+        help='Индекс полинома secp256k1 (0-12, по умолчанию: 0)'
     )
     
     parser.add_argument(

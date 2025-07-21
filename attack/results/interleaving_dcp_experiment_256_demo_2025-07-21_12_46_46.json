@@ -1,0 +1,48 @@
+{
+  "metadata": {
+    "timestamp": "2025-07-21T12:46:46.087807",
+    "experiment_type": "interleaving_dcp_experiment_demo",
+    "window_size": 3,
+    "polynomial_index": 12,
+    "curve": "secp256k1",
+    "pubkey": "ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a26302b195386bea3f5f002dc033b92cfc2c9e71b586302b09cfe535e1ff290b1b5ac",
+    "total_experiments": 3,
+    "successful_experiments": 0,
+    "note": "This is a DEMO simulation without real cryptographic computations"
+  },
+  "results": [
+    {
+      "k0": -1,
+      "k1": -1,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.34240035376245215,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -1,
+      "k1": -3,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.31945598402492836,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -1,
+      "k1": -5,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.21017414495550518,
+        "nguesses": 0
+      }
+    }
+  ]
+}
