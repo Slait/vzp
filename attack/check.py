@@ -42,7 +42,7 @@ def parse_hex_key(key_hex):
             key_hex = key_hex[2:]
         
         # Validate hex format
-        private_key = ZZ("0x" + key_hex)
+        private_key = ZZ(int(key_hex, 16))
         return private_key, key_hex
     except ValueError as e:
         raise argparse.ArgumentTypeError(f"Invalid private key format: {e}")
@@ -77,8 +77,8 @@ def extract_pubkey_coordinates(pubkey_hex):
     x_hex = pubkey_hex[:64]
     y_hex = pubkey_hex[64:]
     
-    x = ZZ("0x" + x_hex)
-    y = ZZ("0x" + y_hex)
+    x = ZZ(int(x_hex, 16))
+    y = ZZ(int(y_hex, 16))
     
     return x, y
 

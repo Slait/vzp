@@ -12,7 +12,13 @@ import time
 import os
 import sys
 from datetime import datetime
-from sage.all import ZZ, RR, log, ceil
+try:
+    from sage.all import ZZ, RR, log, ceil
+except ImportError:
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    from sage_minimal import ZZ, RR, log, ceil
 
 # Import attack modules
 import zvp_glv_sac
@@ -52,8 +58,9 @@ def extract_coordinates_from_pubkey(pubkey_hex):
     x_hex = pubkey_hex[:64]
     y_hex = pubkey_hex[64:]
     
-    x = ZZ("0x" + x_hex)
-    y = ZZ("0x" + y_hex)
+    # Convert hex strings to integers
+    x = ZZ(int(x_hex, 16))
+    y = ZZ(int(y_hex, 16))
     
     return x, y
 
