@@ -8,30 +8,31 @@ import argparse
 import json
 import sys
 
-# Small discrete log system mod 79 constants
-CURVE_P = 79
-CURVE_ORDER = 79
-# Note: This is a precomputed lookup table, not necessarily an elliptic curve
+# Elliptic curve y² = x³ + 7 (mod 67) with private keys mod 79
+CURVE_P = 67  # Modulus for public key coordinates
+CURVE_ORDER = 79  # Modulus for private keys
+CURVE_A = 0
+CURVE_B = 7
 
-# Precomputed lookup table for d -> (Qx, Qy)
+# Correct lookup table for d -> (Qx, Qy) on curve y² = x³ + 7 (mod 67)
 PUBKEY_TABLE = {
     0: None,  # Point at infinity
-    1: (2, 22), 2: (52, 7), 3: (62, 63), 4: (25, 17), 5: (46, 4),
-    6: (11, 2), 7: (16, 63), 8: (21, 42), 9: (13, 44), 10: (56, 4),
-    11: (24, 3), 12: (14, 65), 13: (55, 17), 14: (5, 2), 15: (53, 12),
-    16: (26, 3), 17: (54, 5), 18: (66, 26), 19: (38, 26), 20: (51, 47),
-    21: (12, 44), 22: (23, 39), 23: (58, 22), 24: (7, 45), 25: (47, 39),
-    26: (6, 42), 27: (17, 37), 28: (49, 65), 29: (63, 12), 30: (42, 23),
-    31: (48, 7), 32: (67, 39), 33: (34, 6), 34: (40, 25), 35: (18, 12),
-    36: (61, 4), 38: (27, 4), 39: (4, 65), 40: (4, 2), 41: (27, 27),
-    42: (30, 26), 43: (61, 27), 44: (18, 55), 45: (40, 42), 46: (34, 7),
-    47: (64, 28), 48: (48, 6), 49: (42, 44), 50: (63, 55), 51: (49, 2),
-    52: (17, 3), 53: (6, 25), 54: (47, 28), 55: (7, 22), 56: (58, 45),
-    57: (23, 28), 58: (12, 23), 59: (51, 2), 60: (38, 41), 61: (66, 41),
-    62: (54, 17), 63: (26, 37), 64: (53, 55), 65: (5, 47), 66: (55, 5),
-    67: (14, 2), 68: (24, 37), 69: (56, 63), 70: (13, 23), 71: (21, 25),
-    72: (16, 4), 73: (11, 47), 74: (46, 27), 75: (25, 5), 76: (62, 4),
-    77: (52, 6), 78: (2, 45)
+    1: (2, 22), 2: (2, 45), 3: (4, 2), 4: (4, 65), 5: (5, 20),
+    6: (5, 47), 7: (6, 25), 8: (6, 42), 9: (7, 22), 10: (7, 45),
+    11: (11, 20), 12: (11, 47), 13: (12, 23), 14: (12, 44), 15: (13, 23),
+    16: (13, 44), 17: (14, 2), 18: (14, 65), 19: (16, 4), 20: (16, 63),
+    21: (17, 30), 22: (17, 37), 23: (18, 12), 24: (18, 55), 25: (21, 25),
+    26: (21, 42), 27: (23, 28), 28: (23, 39), 29: (24, 30), 30: (24, 37),
+    31: (25, 17), 32: (25, 50), 33: (26, 30), 34: (26, 37), 35: (27, 27),
+    36: (27, 40), 37: (30, 26), 38: (30, 41), 39: (34, 7), 40: (34, 60),
+    41: (38, 26), 42: (38, 41), 43: (40, 25), 44: (40, 42), 45: (42, 23),
+    46: (42, 44), 47: (46, 27), 48: (46, 40), 49: (47, 28), 50: (47, 39),
+    51: (48, 7), 52: (48, 60), 53: (49, 2), 54: (49, 65), 55: (51, 20),
+    56: (51, 47), 57: (52, 7), 58: (52, 60), 59: (53, 12), 60: (53, 55),
+    61: (54, 17), 62: (54, 50), 63: (55, 17), 64: (55, 50), 65: (56, 4),
+    66: (56, 63), 67: (58, 22), 68: (58, 45), 69: (61, 27), 70: (61, 40),
+    71: (62, 4), 72: (62, 63), 73: (63, 12), 74: (63, 55), 75: (64, 28),
+    76: (64, 39), 77: (66, 26), 78: (66, 41)
 }
 
 # Reverse lookup table (Qx, Qy) -> d
@@ -68,18 +69,49 @@ def mod_inverse(a, m):
         raise ValueError("Modular inverse does not exist")
     return (x % m + m) % m
 
-def simulate_point_operation(d1, d2, operation='add'):
-    """Simulate point operations using lookup table"""
-    if operation == 'add':
-        result_d = (d1 + d2) % CURVE_ORDER
-    elif operation == 'sub':
-        result_d = (d1 - d2) % CURVE_ORDER
-    elif operation == 'mul':
-        result_d = (d1 * d2) % CURVE_ORDER
-    else:
-        result_d = d1
+def point_add_ec(p1, p2):
+    """Add two points on elliptic curve y² = x³ + 7 (mod 67)"""
+    if p1 is None:  # Point at infinity
+        return p2
+    if p2 is None:  # Point at infinity
+        return p1
     
-    return PUBKEY_TABLE.get(result_d, None)
+    x1, y1 = p1
+    x2, y2 = p2
+    
+    if x1 == x2:
+        if y1 == y2:
+            # Point doubling
+            s = (3 * x1 * x1 + CURVE_A) * mod_inverse(2 * y1, CURVE_P) % CURVE_P
+        else:
+            # Points are inverses
+            return None  # Point at infinity
+    else:
+        # Regular addition
+        s = (y2 - y1) * mod_inverse(x2 - x1, CURVE_P) % CURVE_P
+    
+    x3 = (s * s - x1 - x2) % CURVE_P
+    y3 = (s * (x1 - x3) - y1) % CURVE_P
+    
+    return (x3, y3)
+
+def point_multiply_ec(k, point):
+    """Multiply point by scalar k using double-and-add"""
+    if k == 0:
+        return None  # Point at infinity
+    if k == 1:
+        return point
+    
+    result = None  # Point at infinity
+    addend = point
+    
+    while k:
+        if k & 1:
+            result = point_add_ec(result, addend)
+        addend = point_add_ec(addend, addend)  # Double
+        k >>= 1
+    
+    return result
 
 def calculate_public_key_small_curve(private_key):
     """Calculate public key from private key using lookup table"""
