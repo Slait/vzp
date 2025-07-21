@@ -12,44 +12,12 @@ import time
 import os
 import sys
 from datetime import datetime
-try:
-    from sage.all import ZZ, RR, log, ceil
-    SAGE_AVAILABLE = True
-except ImportError:
-    # Fallback for demonstration without SageMath
-    import math
-    print("WARNING: SageMath not available. Using fallback implementation.")
-    print("For full functionality, please install SageMath.")
-    SAGE_AVAILABLE = False
-    
-    # Minimal fallback implementations
-    class ZZ:
-        @staticmethod
-        def __call__(x):
-            return int(x)
-    
-    class RR:
-        @staticmethod
-        def __call__(x):
-            return float(x)
-    
-    def log(x, base=None):
-        if base is None:
-            return math.log(x)
-        return math.log(x) / math.log(base)
-    
-    def ceil(x):
-        return math.ceil(x)
+from sage.all import ZZ, RR, log, ceil
 
 # Import attack modules
-try:
-    import zvp_glv_sac
-    import utils
-    from utils import ZVPparams, load_efd_secp256k1_registers
-    ATTACK_MODULES_AVAILABLE = True
-except ImportError as e:
-    print(f"WARNING: Attack modules not available: {e}")
-    ATTACK_MODULES_AVAILABLE = False
+import zvp_glv_sac
+import utils
+from utils import ZVPparams, load_efd_secp256k1_registers
 
 
 def parse_hex_pubkey(pubkey_hex):
@@ -101,12 +69,6 @@ def validate_point_on_curve(x, y, curve):
 
 def setup_zvp_params(pubkey_hex, target_bits):
     """Setup ZVP parameters for the attack"""
-    if not SAGE_AVAILABLE:
-        raise RuntimeError("SageMath is required for full attack functionality")
-    
-    if not ATTACK_MODULES_AVAILABLE:
-        raise RuntimeError("Attack modules not available")
-    
     print(f"[+] Setting up ZVP parameters...")
     print(f"    Target bits: {target_bits}")
     print(f"    Public key: {pubkey_hex[:16]}...{pubkey_hex[-16:]}")
