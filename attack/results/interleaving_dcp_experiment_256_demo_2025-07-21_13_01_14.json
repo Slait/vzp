@@ -1,0 +1,73 @@
+{
+  "metadata": {
+    "timestamp": "2025-07-21T13:01:14.970806",
+    "experiment_type": "interleaving_dcp_experiment_demo",
+    "window_size": 3,
+    "polynomial_index": 0,
+    "curve": "secp256k1",
+    "pubkey": "04ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a26302b195386bea3f5f002dc033b92cfc2c9e71b586302b09cfe535e1ff290b1b5ac",
+    "total_experiments": 5,
+    "successful_experiments": 1,
+    "note": "This is a DEMO simulation without real cryptographic computations"
+  },
+  "results": [
+    {
+      "k0": -1,
+      "k1": -1,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.3764663860995445,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -1,
+      "k1": -3,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.7979293045032841,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -1,
+      "k1": -5,
+      "k": -1,
+      "result": {
+        "recovered": 1,
+        "point": [
+          24065536470048756921770811080649549374638112234500833562206800820253601693515,
+          32797222812855287782463463760455154318767598182534014807190318421870704820097
+        ],
+        "time_zvp": 1.2731950811342194,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -1,
+      "k1": -7,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.30275895154110694,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -1,
+      "k1": 1,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.11906429783531022,
+        "nguesses": 0
+      }
+    }
+  ]
+}

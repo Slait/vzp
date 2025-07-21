@@ -128,6 +128,34 @@ def setup_registers_for_polynomial(polynomial_index, verbose=True):
     return registers
 
 
+def check_pari_tools(verbose=True):
+    """Проверка доступности PARI/GP tools"""
+    pari_solver = './attack/pari_tools/dcp_solver'
+    if not os.path.exists(pari_solver):
+        if verbose:
+            print(f"❌ PARI solver не найден: {pari_solver}")
+        return False
+    
+    if not os.access(pari_solver, os.X_OK):
+        if verbose:
+            print(f"❌ PARI solver не исполняемый: {pari_solver}")
+        return False
+    
+    # Попробуем запустить solver для проверки зависимостей
+    try:
+        result = os.system(f"{pari_solver} >/dev/null 2>&1")
+        # Если exit code 127 - это обычно отсутствующие библиотеки
+        if result == 127 * 256:  # os.system возвращает код * 256
+            if verbose:
+                print(f"❌ PARI/GP библиотеки не установлены")
+                print(f"   Установите: sudo apt-get install pari-gp libpari-dev")
+            return False
+    except:
+        pass
+    
+    return True
+
+
 def generate_dcp_experiments(zvp_params, w, polynomial_index, num_experiments=1000, verbose=True):
     """Генерация DCP экспериментов для заданного окна w"""
     if verbose:
@@ -135,6 +163,21 @@ def generate_dcp_experiments(zvp_params, w, polynomial_index, num_experiments=10
         print(f"   Размер окна w: {w}")
         print(f"   Полином: #{polynomial_index}")
         print(f"   Количество экспериментов: {num_experiments}")
+    
+    # Создаем необходимые папки для pari_tools
+    # dcp_pari.py использует относительные пути от текущей рабочей директории
+    pari_results_dir = './attack/pari_tools/results'
+    if not os.path.exists(pari_results_dir):
+        os.makedirs(pari_results_dir)
+        if verbose:
+            print(f"   📁 Создана папка: {pari_results_dir}")
+    
+    # Проверяем доступность PARI/GP tools
+    if not check_pari_tools(verbose):
+        if verbose:
+            print(f"⚠️  PARI/GP недоступен - DCP эксперименты могут завершиться ошибкой")
+            print(f"   Для полной функциональности установите PARI/GP:")
+            print(f"   sudo apt-get install pari-gp libpari-dev")
     
     # Настраиваем регистры для полинома
     zvp_params.registers = setup_registers_for_polynomial(polynomial_index, verbose)

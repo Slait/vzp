@@ -114,6 +114,42 @@ except ImportError as e:
 sage -python test_sage.py
 ```
 
+## Дополнительные требования: PARI/GP
+
+Генератор DCP точек также требует PARI/GP для решения DCP (Dependent Coordinates Problem):
+
+### Установка PARI/GP
+
+```bash
+# Ubuntu/Debian
+sudo apt-get update
+sudo apt-get install pari-gp libpari-dev
+
+# Arch Linux
+sudo pacman -S pari
+
+# macOS (через Homebrew)
+brew install pari
+
+# Из исходного кода
+wget https://pari.math.u-bordeaux.fr/pub/pari/unix/pari-2.15.4.tar.gz
+tar -xzf pari-2.15.4.tar.gz
+cd pari-2.15.4
+./Configure
+make all
+sudo make install
+```
+
+### Проверка PARI/GP
+
+```bash
+# Проверка установки
+gp --version
+
+# Проверка библиотек
+ldd attack/pari_tools/dcp_solver
+```
+
 ## Альтернатива: Демо версия
 
 Если установка SageMath вызывает трудности, используйте демо версию скрипта:
@@ -141,6 +177,20 @@ python3 attack_zvp_glv_inter_easy_prec_demo.py \
 **Решение**: Неправильный импорт модулей атаки
 - Убедитесь, что папка `attack/` находится в той же директории
 - Запускайте скрипт из корневой папки проекта
+
+### Проблема: "No such file or directory: './pari_tools/results/_polynomial'"
+
+**Решение**: Отсутствует папка results или не установлен PARI/GP
+- Папка создается автоматически генератором DCP точек
+- Установите PARI/GP: `sudo apt-get install pari-gp libpari-dev`
+- Проверьте права доступа: `chmod +x attack/pari_tools/dcp_solver`
+
+### Проблема: "error while loading shared libraries: libpari-gmp-tls.so.8"
+
+**Решение**: Не установлены библиотеки PARI/GP
+- Установите: `sudo apt-get install pari-gp libpari-dev`
+- Проверьте: `ldd attack/pari_tools/dcp_solver`
+- Обновите LD_LIBRARY_PATH если нужно
 
 ### Проблема: Медленная работа
 
