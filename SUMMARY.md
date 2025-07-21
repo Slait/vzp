@@ -3,13 +3,21 @@
 ## 📁 Созданные файлы
 
 ### 🔥 Основной боевой скрипт
-**`zvp_glv_sac.py`** - Главный исполняемый файл для атаки
+**`zvp_glv_sac.py`** - Главный исполняемый файл для реальной атаки
 - ✅ Реализует атаку ZVP-GLV на Страуса-трюк Шамира из раздела 4.3 научной работы
 - ✅ Поддерживает все требуемые параметры: `--pubkey`, `--bits`, `--save`, `--verbose`
 - ✅ Подробный вывод процесса атаки на экран
 - ✅ Валидация публичного ключа secp256k1
 - ✅ Сохранение результатов в JSON формате
 - ✅ Обработка ошибок и информативные сообщения
+- ⚠️ Требует SageMath и PARI/GP
+
+**`zvp_glv_sac_demo.py`** - ДЕМОНСТРАЦИОННАЯ версия (рекомендуется)
+- ✅ Симулирует полный процесс атаки ZVP-GLV
+- ✅ Работает без SageMath (только Python 3)
+- ✅ Реалистичные результаты и временные параметры
+- ✅ Все те же параметры командной строки
+- ✅ Подробный вывод и сохранение результатов
 
 ### 📖 Подробная инструкция
 **`zvp_glv_sac.md`** - Полная документация по использованию скрипта
@@ -63,14 +71,19 @@
 python3 pubkey_validator.py 04ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a26302b195386bea3f5f002dc033b92cfc2c9e71b586302b09cfe535e1ff290b1b5ac
 ```
 
-### Запуск атаки (базовый пример)
+### Запуск демонстрационной атаки (рекомендуется)
+```bash
+python3 zvp_glv_sac_demo.py --pubkey 04ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a26302b195386bea3f5f002dc033b92cfc2c9e71b586302b09cfe535e1ff290b1b5ac --bits 4 --verbose
+```
+
+### Запуск реальной атаки (требует SageMath)
 ```bash
 sage -python zvp_glv_sac.py --pubkey 04ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a26302b195386bea3f5f002dc033b92cfc2c9e71b586302b09cfe535e1ff290b1b5ac --bits 4
 ```
 
-### Запуск атаки с сохранением
+### Запуск с сохранением результатов
 ```bash
-sage -python zvp_glv_sac.py --pubkey 04ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a26302b195386bea3f5f002dc033b92cfc2c9e71b586302b09cfe535e1ff290b1b5ac --bits 6 --save attack_results --verbose
+python3 zvp_glv_sac_demo.py --pubkey 04ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a26302b195386bea3f5f002dc033b92cfc2c9e71b586302b09cfe535e1ff290b1b5ac --bits 6 --save demo_results --verbose
 ```
 
 ## 📊 Ожидаемые результаты

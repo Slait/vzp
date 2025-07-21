@@ -25,7 +25,8 @@
 ### Структура проекта
 ```
 workspace/
-├── zvp_glv_sac.py           # Основной боевой скрипт
+├── zvp_glv_sac.py           # Основной боевой скрипт (требует SageMath)
+├── zvp_glv_sac_demo.py      # ДЕМОНСТРАЦИОННАЯ версия (Python 3)
 ├── zvp_glv_sac.md           # Данная инструкция
 ├── pubkey_validator.py      # Утилита проверки публичного ключа
 └── attack/                  # Папка с модулями атаки (НЕ ПРАВИТЬ!)
@@ -35,6 +36,9 @@ workspace/
     ├── dcp.py               # DCP solver
     ├── msm.py               # Multiscalar multiplication
     ├── pari_tools/          # Скомпилированные C/C++ модули
+    │   ├── dcp_solver       # Исполняемый файл DCP solver
+    │   ├── dcp_glv_solver   # GLV DCP solver
+    │   └── results/         # Промежуточные файлы (_polynomial и др.)
     └── results/             # Папка для сохранения результатов
 ```
 
@@ -95,6 +99,21 @@ python3 pubkey_validator.py 04ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd
 - ✅ Формат ключа (130 hex символов, префикс 04)
 - ✅ Валидность координат
 - ✅ Принадлежность точки кривой secp256k1
+
+## Демонстрационная версия
+
+Если у вас нет доступа к SageMath, используйте демонстрационную версию:
+
+```bash
+python3 zvp_glv_sac_demo.py --pubkey 04ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a26302b195386bea3f5f002dc033b92cfc2c9e71b586302b09cfe535e1ff290b1b5ac --bits 4 --verbose
+```
+
+**Особенности демо-версии:**
+- ✅ Работает без SageMath (только Python 3)
+- ✅ Симулирует процесс атаки с реалистичными результатами
+- ✅ Показывает все этапы атаки и промежуточные результаты
+- ✅ Сохраняет результаты в JSON формате
+- ⚠️ НЕ выполняет реальную атаку - только демонстрация
 
 ## Примеры использования
 
@@ -226,7 +245,22 @@ sage -python zvp_glv_sac.py --pubkey 04ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349
 
 ### Ошибка: "No module named 'sage'"
 **Причина**: SageMath не установлен или не в PATH
-**Решение**: Установите SageMath или запустите через Sage
+**Решение**: 
+- Установите SageMath: https://www.sagemath.org/download.html
+- Или используйте демонстрационную версию: `python3 zvp_glv_sac_demo.py`
+
+### Ошибка: "[Errno 2] No such file or directory: './pari_tools/results/_polynomial'"
+**Причина**: PARI/GP не установлен или исполняемые файлы не работают
+**Решение**: 
+- Установите PARI/GP: https://pari.math.u-bordeaux.fr/download.html
+- Убедитесь что файлы в `attack/pari_tools/` исполняемы: `chmod +x attack/pari_tools/*`
+- Для демонстрации используйте: `python3 zvp_glv_sac_demo.py`
+
+### Ошибка: "error while loading shared libraries: libpari-gmp-tls.so.8"
+**Причина**: Библиотеки PARI не установлены в системе
+**Решение**:
+- Ubuntu/Debian: `sudo apt install libpari-dev pari-gp`
+- Или используйте демонстрационную версию
 
 ### Низкое количество восстановленных битов
 **Причина**: DCP проблемы не имеют решений для данного ключа

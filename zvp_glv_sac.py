@@ -156,7 +156,16 @@ def run_attack(zvpparams):
     
     start_time = time.time()
     
+    # Сохраняем текущую рабочую директорию
+    original_cwd = os.getcwd()
+    
     try:
+        # Переходим в папку attack для правильной работы DCP solver
+        attack_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'attack')
+        os.chdir(attack_dir)
+        
+        print(f"   Рабочая директория: {os.getcwd()}")
+        
         # Выполняем атаку
         result = zvpparams.attack(zvpparams)
         
@@ -189,6 +198,9 @@ def run_attack(zvpparams):
             'attack_time': attack_time,
             'target_bits': zvpparams.target_bits
         }
+    finally:
+        # Возвращаемся в исходную директорию
+        os.chdir(original_cwd)
 
 
 def save_results_to_file(results, zvpparams, filename):
@@ -211,7 +223,7 @@ def save_results_to_file(results, zvpparams, filename):
     }
     
     # Создаем папку results если не существует
-    results_dir = os.path.join('attack', 'results')
+    results_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'attack', 'results')
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
     

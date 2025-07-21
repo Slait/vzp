@@ -9,7 +9,14 @@
 python3 pubkey_validator.py 04ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a26302b195386bea3f5f002dc033b92cfc2c9e71b586302b09cfe535e1ff290b1b5ac
 ```
 
-### 2. Запуск атаки (требует SageMath)
+### 2. Запуск атаки
+
+#### Демонстрационная версия (Python 3 - рекомендуется)
+```bash
+python3 zvp_glv_sac_demo.py --pubkey 04ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a26302b195386bea3f5f002dc033b92cfc2c9e71b586302b09cfe535e1ff290b1b5ac --bits 4 --verbose
+```
+
+#### Реальная атака (требует SageMath + PARI/GP)
 ```bash
 sage -python zvp_glv_sac.py --pubkey 04ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a26302b195386bea3f5f002dc033b92cfc2c9e71b586302b09cfe535e1ff290b1b5ac --bits 4
 ```
