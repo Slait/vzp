@@ -65,7 +65,7 @@ int dcp(GEN E, GEN p, long k, GEN map, GEN lam,GEN V, GEN f, char *filename) {
       g = gsubst(g,varn(gp_read_str("Y1")),gel(ys,j));
       g = gsubst(g,varn(gp_read_str("X2")),gel(Q,1));
       g = gsubst(g,varn(gp_read_str("Y2")),gel(Q,2));
-      if (isintzero(g[2])) {
+      if (isintzero(gel(g,2))) {
         // printf("Yes\n");
         pari_fprintf(file, "%Ps, %Ps", gel(roots,i), gel(ys,j));
         fclose(file);
@@ -143,7 +143,7 @@ int multidcp(GEN E, GEN p, long k, long l, GEN mapk, GEN mapl, GEN lam,GEN V, GE
       Q = ellmul(E, Q, lam);
       g = gsubst(g,varn(gp_read_str("X2")),gel(Q,1));
       g = gsubst(g,varn(gp_read_str("Y2")),gel(Q,2));
-      if (isintzero(g[2])) {
+      if (isintzero(gel(g,2))) {
         pari_fprintf(file, "%Ps, %Ps", gel(roots,i), gel(ys,j));
         fclose(file);
         return 1;
@@ -240,7 +240,7 @@ int dcp_semaev(GEN E, GEN p, long k1, GEN map1, GEN lam, long k2, GEN map2, GEN 
       g = gsubst(g,varn(gp_read_str("Y1")),gel(ys,j));
       g = gsubst(g,varn(gp_read_str("X2")),gel(P2,1));
       g = gsubst(g,varn(gp_read_str("Y2")),gel(P2,2));
-      if (isintzero(g[2])) {
+      if (isintzero(gel(g,2))) {
         // printf("Yes\n");
         pari_fprintf(file, "%Ps, %Ps", gel(roots,i), gel(ys,j));
         fclose(file);
@@ -329,7 +329,7 @@ int multidcp_semaev(GEN E, GEN p, long l, GEN map0, long k1, GEN map1, GEN lam, 
       P2 = elladd(E,P1,P2);
       g = gsubst(g,varn(gp_read_str("X2")),gel(P2,1));
       g = gsubst(g,varn(gp_read_str("Y2")),gel(P2,2));
-      if (isintzero(g[2])) {
+      if (isintzero(gel(g,2))) {
         pari_fprintf(file, "%Ps, %Ps", gel(roots,i), gel(ys,j));
         fclose(file);
         return 1;

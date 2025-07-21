@@ -4,6 +4,16 @@ Functions for solving DCP using pari/gp.
 import os
 import re
 
+# Import fallback functions for when C programs fail
+try:
+    from .dcp_pari_fallback import fallback_functions
+except ImportError:
+    try:
+        from dcp_pari_fallback import fallback_functions
+    except ImportError:
+        print("[WARNING] Fallback functions not available")
+        fallback_functions = {}
+
 
 def get_pari_tools_path():
     """Get correct path to pari_tools directory"""
@@ -18,22 +28,30 @@ def get_pari_tools_path():
 def dcpsolver_pari(p, a, b, k, lam, Vpolynomials, registers):
     """DCP solver for 2-dimensional scalar decomposition.
     Returns a list of x-coordinates."""
-    base_path = get_pari_tools_path()
-    pari_path = os.path.join(base_path, "dcp_solver")
-    solution_path = os.path.join(base_path, "results", "poly2")
-    Vpolynomial_path = os.path.join(base_path, "results", "_polynomial")
-    fpolynomial_path = os.path.join(base_path, "results", "_fpolynomial")
-    V_string = polynomials_to_parituples(Vpolynomials, p)
-    f_string = polynomials_to_paristring(registers.polynomials_y, p)
-    with open(Vpolynomial_path, "w") as f:
-        f.write(V_string)
-    with open(fpolynomial_path, "w") as f:
-        f.write(f_string)
+    try:
+        base_path = get_pari_tools_path()
+        pari_path = os.path.join(base_path, "dcp_solver")
+        solution_path = os.path.join(base_path, "results", "poly2")
+        Vpolynomial_path = os.path.join(base_path, "results", "_polynomial")
+        fpolynomial_path = os.path.join(base_path, "results", "_fpolynomial")
+        V_string = polynomials_to_parituples(Vpolynomials, p)
+        f_string = polynomials_to_paristring(registers.polynomials_y, p)
+        with open(Vpolynomial_path, "w") as f:
+            f.write(V_string)
+        with open(fpolynomial_path, "w") as f:
+            f.write(f_string)
 
-    call_c(
-        f"{pari_path} {p} {k} {lam} {a} {b} {Vpolynomial_path} {fpolynomial_path} {solution_path}"
-    )
-    return read_solution(solution_path)
+        call_c(
+            f"{pari_path} {p} {k} {lam} {a} {b} {Vpolynomial_path} {fpolynomial_path} {solution_path}"
+        )
+        return read_solution(solution_path)
+    except Exception as e:
+        print(f"[WARNING] dcpsolver_pari failed: {e}")
+        if 'dcpsolver_pari' in fallback_functions:
+            print("[INFO] Using fallback implementation")
+            return fallback_functions['dcpsolver_pari'](p, a, b, k, lam, Vpolynomials, registers)
+        else:
+            raise
 
 
 def multidcpsolver_pari(p, a, b, k, l, lam, Vpolynomials, registers):
@@ -60,21 +78,29 @@ def multidcpsolver_pari(p, a, b, k, l, lam, Vpolynomials, registers):
 def glvdcpsolver_pari(p, a, b, k1, lam, k2, Vpolynomials, registers):
     """DCP solver for 2-dimensional multiscalar decomposition.
     Returns a list of x-coordinates."""
-    base_path = get_pari_tools_path()
-    pari_path = os.path.join(base_path, "dcp_glv_solver")
-    solution_path = os.path.join(base_path, "results", "multipoly4")
-    Vpolynomial_path = os.path.join(base_path, "results", "_Vpolynomial")
-    fpolynomial_path = os.path.join(base_path, "results", "_fpolynomial")
-    V_string = polynomials_to_parituples(Vpolynomials, p)
-    f_string = polynomials_to_paristring(registers.polynomials_y, p)
-    with open(Vpolynomial_path, "w") as f:
-        f.write(V_string)
-    with open(fpolynomial_path, "w") as f:
-        f.write(f_string)
-    call_c(
-        f"{pari_path} {p} {a} {b} {k1} {lam} {k2} {Vpolynomial_path} {fpolynomial_path} {solution_path}"
-    )
-    return read_solution(solution_path)
+    try:
+        base_path = get_pari_tools_path()
+        pari_path = os.path.join(base_path, "dcp_glv_solver")
+        solution_path = os.path.join(base_path, "results", "multipoly4")
+        Vpolynomial_path = os.path.join(base_path, "results", "_Vpolynomial")
+        fpolynomial_path = os.path.join(base_path, "results", "_fpolynomial")
+        V_string = polynomials_to_parituples(Vpolynomials, p)
+        f_string = polynomials_to_paristring(registers.polynomials_y, p)
+        with open(Vpolynomial_path, "w") as f:
+            f.write(V_string)
+        with open(fpolynomial_path, "w") as f:
+            f.write(f_string)
+        call_c(
+            f"{pari_path} {p} {a} {b} {k1} {lam} {k2} {Vpolynomial_path} {fpolynomial_path} {solution_path}"
+        )
+        return read_solution(solution_path)
+    except Exception as e:
+        print(f"[WARNING] glvdcpsolver_pari failed: {e}")
+        if 'glvdcpsolver_pari' in fallback_functions:
+            print("[INFO] Using GLV fallback implementation")
+            return fallback_functions['glvdcpsolver_pari'](p, a, b, k1, lam, k2, Vpolynomials, registers)
+        else:
+            raise
 
 
 def glvdcpmultisolver_pari(p, a, b, scalar0, k1, lam, k2, Vpolynomials, registers):
@@ -133,7 +159,12 @@ def polynomials_to_paristring(polynomials, p):
 
 
 def call_c(command):
-    os.system(command)
+    """Execute C command with error handling"""
+    result = os.system(command)
+    if result != 0:
+        print(f"[WARNING] C program failed with code {result}")
+        print(f"[WARNING] Command: {command}")
+        raise RuntimeError(f"C program execution failed: {result}")
 
 
 def read_solution(solution_path):
