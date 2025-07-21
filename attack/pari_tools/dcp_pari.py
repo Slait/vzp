@@ -5,13 +5,24 @@ import os
 import re
 
 
+def get_pari_tools_path():
+    """Get correct path to pari_tools directory"""
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    # Ensure results directory exists
+    results_dir = os.path.join(current_dir, "results")
+    if not os.path.exists(results_dir):
+        os.makedirs(results_dir)
+    return current_dir
+
+
 def dcpsolver_pari(p, a, b, k, lam, Vpolynomials, registers):
     """DCP solver for 2-dimensional scalar decomposition.
     Returns a list of x-coordinates."""
-    pari_path = "./pari_tools/dcp_solver"
-    solution_path = "./pari_tools/results/poly2"
-    Vpolynomial_path = "./pari_tools/results/_polynomial"
-    fpolynomial_path = "./pari_tools/results/_fpolynomial"
+    base_path = get_pari_tools_path()
+    pari_path = os.path.join(base_path, "dcp_solver")
+    solution_path = os.path.join(base_path, "results", "poly2")
+    Vpolynomial_path = os.path.join(base_path, "results", "_polynomial")
+    fpolynomial_path = os.path.join(base_path, "results", "_fpolynomial")
     V_string = polynomials_to_parituples(Vpolynomials, p)
     f_string = polynomials_to_paristring(registers.polynomials_y, p)
     with open(Vpolynomial_path, "w") as f:
@@ -28,10 +39,11 @@ def dcpsolver_pari(p, a, b, k, lam, Vpolynomials, registers):
 def multidcpsolver_pari(p, a, b, k, l, lam, Vpolynomials, registers):
     """DCP solver for 2-dimensional scalar decomposition.
     Returns a list of x-coordinates."""
-    pari_path = "./pari_tools/multidcp_solver"
-    solution_path = "./pari_tools/results/poly2"
-    Vpolynomial_path = "./pari_tools/results/_polynomial"
-    fpolynomial_path = "./pari_tools/results/_fpolynomial"
+    base_path = get_pari_tools_path()
+    pari_path = os.path.join(base_path, "multidcp_solver")
+    solution_path = os.path.join(base_path, "results", "poly2")
+    Vpolynomial_path = os.path.join(base_path, "results", "_polynomial")
+    fpolynomial_path = os.path.join(base_path, "results", "_fpolynomial")
     V_string = polynomials_to_parituples(Vpolynomials, p)
     f_string = polynomials_to_paristring(registers.polynomials_y, p)
     with open(Vpolynomial_path, "w") as f:
@@ -48,10 +60,11 @@ def multidcpsolver_pari(p, a, b, k, l, lam, Vpolynomials, registers):
 def glvdcpsolver_pari(p, a, b, k1, lam, k2, Vpolynomials, registers):
     """DCP solver for 2-dimensional multiscalar decomposition.
     Returns a list of x-coordinates."""
-    pari_path = "./pari_tools/dcp_glv_solver"
-    solution_path = "./pari_tools/results/multipoly4"
-    Vpolynomial_path = "./pari_tools/results/_Vpolynomial"
-    fpolynomial_path = "./pari_tools/results/_fpolynomial"
+    base_path = get_pari_tools_path()
+    pari_path = os.path.join(base_path, "dcp_glv_solver")
+    solution_path = os.path.join(base_path, "results", "multipoly4")
+    Vpolynomial_path = os.path.join(base_path, "results", "_Vpolynomial")
+    fpolynomial_path = os.path.join(base_path, "results", "_fpolynomial")
     V_string = polynomials_to_parituples(Vpolynomials, p)
     f_string = polynomials_to_paristring(registers.polynomials_y, p)
     with open(Vpolynomial_path, "w") as f:
@@ -67,10 +80,11 @@ def glvdcpsolver_pari(p, a, b, k1, lam, k2, Vpolynomials, registers):
 def glvdcpmultisolver_pari(p, a, b, scalar0, k1, lam, k2, Vpolynomials, registers):
     """DCP solver for 2-dimensional multiscalar decomposition.
     Returns a list of x-coordinates."""
-    pari_path = "./pari_tools/multidcp_glv_solver"
-    solution_path = "./pari_tools/results/multipoly4"
-    Vpolynomial_path = "./pari_tools/results/_Vpolynomial"
-    fpolynomial_path = "./pari_tools/results/_fpolynomial"
+    base_path = get_pari_tools_path()
+    pari_path = os.path.join(base_path, "multidcp_glv_solver")
+    solution_path = os.path.join(base_path, "results", "multipoly4")
+    Vpolynomial_path = os.path.join(base_path, "results", "_Vpolynomial")
+    fpolynomial_path = os.path.join(base_path, "results", "_fpolynomial")
     V_string = polynomials_to_parituples(Vpolynomials, p)
     f_string = polynomials_to_paristring(registers.polynomials_y, p)
     with open(Vpolynomial_path, "w") as f:
