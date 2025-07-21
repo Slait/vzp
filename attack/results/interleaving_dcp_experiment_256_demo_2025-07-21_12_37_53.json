@@ -1,0 +1,244 @@
+{
+  "metadata": {
+    "timestamp": "2025-07-21T12:37:53.189734",
+    "experiment_type": "interleaving_dcp_experiment_demo",
+    "window_size": 4,
+    "polynomial_index": 0,
+    "curve": "secp256k1",
+    "pubkey": "04ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a26302b195386bea3f5f002dc033b92cfc2c9e71b586302b09cfe535e1ff290b1b5ac",
+    "total_experiments": 20,
+    "successful_experiments": 3,
+    "note": "This is a DEMO simulation without real cryptographic computations"
+  },
+  "results": [
+    {
+      "k0": -1,
+      "k1": -1,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.3752224668846616,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -1,
+      "k1": -3,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.8544096997847606,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -1,
+      "k1": -5,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.7840144821441429,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -1,
+      "k1": -7,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.31436110084963975,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -1,
+      "k1": -9,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.9557754248903909,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -1,
+      "k1": -11,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.5051928273733696,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -1,
+      "k1": -13,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.9651959760687583,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -1,
+      "k1": -15,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.24958027485399825,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -1,
+      "k1": 1,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.8052785736301987,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -1,
+      "k1": 3,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.7155813809167547,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -1,
+      "k1": 5,
+      "k": -1,
+      "result": {
+        "recovered": 1,
+        "point": [
+          23294078392892449340782293362978683510230325432981608991479341068409200132583,
+          44877037206731000331751571374350500607989712435549920146809566026431827379950
+        ],
+        "time_zvp": 1.1162670779042732,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -1,
+      "k1": 7,
+      "k": -1,
+      "result": {
+        "recovered": 1,
+        "point": [
+          10792307817971793473136862515973678061079910206607126074067814584293837692494,
+          52138602874110995278041860833360561219608979934558645219868929346810845510497
+        ],
+        "time_zvp": 1.1471220322929363,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -1,
+      "k1": 9,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.8720021177891004,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -1,
+      "k1": 11,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.545548305226036,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -1,
+      "k1": 13,
+      "k": -1,
+      "result": {
+        "recovered": 1,
+        "point": [
+          9233265560022943308687534403094823848406190826024246790291797233262675686789,
+          30343796554018698075821235241728815157574937593927754855700858313354244842589
+        ],
+        "time_zvp": 1.509387537957417,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -1,
+      "k1": 15,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.8262106214942357,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -3,
+      "k1": -1,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.2778920769672194,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -3,
+      "k1": -3,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.8967852990723534,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -3,
+      "k1": -5,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.7378225304359685,
+        "nguesses": 0
+      }
+    },
+    {
+      "k0": -3,
+      "k1": -7,
+      "k": -1,
+      "result": {
+        "recovered": 0,
+        "point": [],
+        "time_zvp": 0.30042733036941704,
+        "nguesses": 0
+      }
+    }
+  ]
+}

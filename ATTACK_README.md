@@ -16,12 +16,29 @@
    - Симулирует процесс атаки для демонстрации
    - Показывает интерфейс и функциональность
 
+### 🔧 Генераторы предвычисленных точек
+
+3. **`generate_dcp_points.py`** - Генератор DCP точек (требует SageMath)
+   - Создает предвычисленные точки для "Этап 1: Загрузка предвычисленных точек..."
+   - Генерирует файлы `interleaving_dcp_experiment_256_TIMESTAMP.json`
+   - Создает remapped точки `interleaving_secp256k1_remapped_W.json`
+
+4. **`generate_dcp_points_demo.py`** - Демо генератор (без SageMath)
+   - Симулирует процесс генерации DCP точек
+   - Создает демо-файлы для тестирования структуры данных
+   - Работает без криптографических библиотек
+
 ### 📖 Документация
 
-3. **`zvp_glv_inter_easy_prec.md`** - Полная инструкция
-   - Подробное описание атаки
-   - Примеры использования
-   - Устранение неполадок
+5. **`zvp_glv_inter_easy_prec.md`** - Полная инструкция
+   -    Подробное описание атаки
+     - Примеры использования  
+     - Устранение неполадок
+
+6. **`SETUP_SAGEMATH.md`** - Инструкция по установке SageMath
+     - Способы установки SageMath
+     - Устранение проблем 
+     - Проверка корректности установки
    - Техническая документация
 
 4. **`ATTACK_README.md`** - Этот файл (краткая сводка)
@@ -57,6 +74,22 @@ sage -python attack_zvp_glv_inter_easy_prec.py \
 ```
 
 **📖 Подробная инструкция по установке SageMath**: см. файл `SETUP_SAGEMATH.md`
+
+### Генерация предвычисленных точек
+
+```bash
+# Демо-генерация (без SageMath)
+python3 generate_dcp_points_demo.py \
+  --pubkey YOUR_PUBKEY_128_HEX_CHARS \
+  --w 4 \
+  --experiments 50
+
+# Реальная генерация (требует SageMath)
+sage -python generate_dcp_points.py \
+  --pubkey YOUR_PUBKEY_128_HEX_CHARS \
+  --w 4 \
+  --experiments 100
+```
 
 ## Параметры командной строки
 
@@ -164,9 +197,15 @@ sage -python attack_zvp_glv_inter_easy_prec.py --help
 ```
 
 ### ❌ "Отсутствуют предвычисленные данные"
-**Решение**: Это нормально, реальная атака требует DCP данных
+**Решение**: Создайте предвычисленные DCP точки
 ```bash
-# Используйте демо версию для тестирования
+# Сначала сгенерируйте DCP точки
+sage -python generate_dcp_points.py --pubkey YOUR_KEY --w 4
+
+# Затем запустите атаку
+sage -python attack_zvp_glv_inter_easy_prec.py --pubkey YOUR_KEY --w 4
+
+# Или используйте демо версию для тестирования
 python3 attack_zvp_glv_inter_easy_prec_demo.py --pubkey YOUR_KEY --w 4
 ```
 
