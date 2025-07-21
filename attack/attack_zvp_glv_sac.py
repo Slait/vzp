@@ -86,7 +86,7 @@ def setup_zvp_params(pubkey_hex, target_bits):
     # Create ZVP parameters
     params = ZVPparams(256)  # secp256k1 is 256-bit
     params.target_bits = target_bits
-    params.target_pubkey = (int(x, 16), int(y, 16))
+    params.target_pubkey = (int(x), int(y))
     
     # Generate secp256k1 secrets for testing (in real attack, these would be unknown)
     params.generate_secp256k1_secrets()
