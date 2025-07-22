@@ -449,6 +449,20 @@ def check_attack_results_simple(json_file, private_key, verbose=False):
                     pubkey_full_hex = f"04{pubkey_full[0]:064x}{pubkey_full[1]:064x}"
                     print(f"      Public key k0+k1*λ: {pubkey_full_hex}")
                     
+                    # Calculate and display g and G values from formula G = gP
+                    # In our context: g = k1, G = k1 * Generator_Point
+                    g_value = k1_alt  # g is our k1 scalar
+                    if abs(g_value) < 2**64:  # Size check for efficient calculation
+                        base_point = (SECP256K1_GX, SECP256K1_GY)
+                        G_point = point_multiply(abs(g_value) % SECP256K1_ORDER, base_point)
+                        if G_point:
+                            G_hex = f"04{G_point[0]:064x}{G_point[1]:064x}"
+                            print(f"      Formula G = gP: g = {g_value}, G = {G_hex}")
+                        else:
+                            print(f"      Formula G = gP: g = {g_value}, G = O (point at infinity)")
+                    else:
+                        print(f"      Formula G = gP: g = {g_value} (too large for G calculation)")
+                    
                     # Get target public key for comparison
                     expected_pubkey = calculate_public_key(private_key)
                     
@@ -594,6 +608,21 @@ def check_attack_results_simple(json_file, private_key, verbose=False):
                         # Display full public key
                         pubkey_hex = f"04{reconstructed_pubkey[0]:064x}{reconstructed_pubkey[1]:064x}"
                         print(f"        Public key k0+k1*λ: {pubkey_hex}")
+                        
+                        # Calculate and display g and G values from formula G = gP
+                        # In our context: g = k1, G = k1 * Generator_Point
+                        g_value = k1_test  # g is our k1 scalar
+                        if abs(g_value) < 2**64:  # Size check for efficient calculation
+                            base_point = (SECP256K1_GX, SECP256K1_GY)
+                            G_point = point_multiply(abs(g_value) % SECP256K1_ORDER, base_point)
+                            if G_point:
+                                G_hex = f"04{G_point[0]:064x}{G_point[1]:064x}"
+                                print(f"        Formula G = gP: g = {g_value}, G = {G_hex}")
+                            else:
+                                print(f"        Formula G = gP: g = {g_value}, G = O (point at infinity)")
+                        else:
+                            print(f"        Formula G = gP: g = {g_value} (too large for G calculation)")
+                        
                         print(f"        ✓ Matches target pubkey perfectly!")
                         
                         best_match = (k0_test, k1_test, reconstructed_private)
@@ -618,6 +647,20 @@ def check_attack_results_simple(json_file, private_key, verbose=False):
                     if reconstructed_pubkey:
                         pubkey_hex = f"04{reconstructed_pubkey[0]:064x}{reconstructed_pubkey[1]:064x}"
                         print(f"        Public key k0+k1*λ: {pubkey_hex}")
+                        
+                        # Calculate and display g and G values from formula G = gP
+                        # In our context: g = k1, G = k1 * Generator_Point
+                        g_value = k1_test  # g is our k1 scalar
+                        if abs(g_value) < 2**64:  # Size check for efficient calculation
+                            base_point = (SECP256K1_GX, SECP256K1_GY)
+                            G_point = point_multiply(abs(g_value) % SECP256K1_ORDER, base_point)
+                            if G_point:
+                                G_hex = f"04{G_point[0]:064x}{G_point[1]:064x}"
+                                print(f"        Formula G = gP: g = {g_value}, G = {G_hex}")
+                            else:
+                                print(f"        Formula G = gP: g = {g_value}, G = O (point at infinity)")
+                        else:
+                            print(f"        Formula G = gP: g = {g_value} (too large for G calculation)")
                     
                     if not best_match:
                         best_match = (k0_test, k1_test, reconstructed_private)
