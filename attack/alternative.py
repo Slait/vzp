@@ -330,25 +330,24 @@ class AlternativeZVPAttack:
     def _create_zvp_params_for_dcp_generation(self):
         """Create ZVP parameters for DCP generation"""
         try:
-            # Initialize GLV curve
-            glv_curve = utils.GLVCurve()
-            glv_curve.set_secp256k1()
+            # Create ZVP parameters with 256 bits (secp256k1)
+            zvp_params = utils.ZVPparams(bits=256)
             
-            # Initialize registers with secp256k1 polynomials
-            registers = utils.Registers()
+            # Set up secp256k1 secrets and GLV curve
+            zvp_params.generate_secp256k1_secrets()
             
             # Load default polynomials for secp256k1
             try:
                 secp256k1_polys = utils.get_secp256k1_polynomials()
                 for poly_x, poly_y in secp256k1_polys:
-                    registers.add_tuple(poly_x, poly_y)
+                    zvp_params.registers.add_tuple(poly_x, poly_y)
             except:
                 # Fallback: add simple register polynomial
-                registers.add_tuple("X1 + X2", "X1 + X2")
+                X1, Y1, X2, Y2 = zvp_params.registers.gens
+                zvp_params.registers.add_tuple(X1 + X2 + 2, X1 + X2 + 2)
             
-            # Create ZVP parameters
-            zvp_params = utils.ZVPparams(glv_curve, registers)
-            zvp_params.target_bits = window_size
+            # Set target bits and attack function
+            zvp_params.target_bits = self.params.window_size
             zvp_params.attack = dcp.interleaving_dcp_experiment
             
             return zvp_params
@@ -593,20 +592,24 @@ class AlternativeZVPAttack:
             
         if not hasattr(self, '_zvp_params_cache'):
             try:
-                # Initialize GLV curve using utils.GLVCurve
-                glv_curve = utils.GLVCurve()
-                glv_curve.set_secp256k1()  # This uses glv_module.secp256k1 internally
+                # Create ZVP parameters with 256 bits (secp256k1)
+                zvp_params = utils.ZVPparams(bits=256)
                 
-                # Initialize registers with secp256k1 polynomials
-                registers = utils.Registers()
+                # Set up secp256k1 secrets and GLV curve
+                zvp_params.generate_secp256k1_secrets()
                 
                 # Load default polynomials for secp256k1
-                secp256k1_polys = utils.get_secp256k1_polynomials()
-                for poly_x, poly_y in secp256k1_polys:
-                    registers.add_tuple(poly_x, poly_y)
+                try:
+                    secp256k1_polys = utils.get_secp256k1_polynomials()
+                    for poly_x, poly_y in secp256k1_polys:
+                        zvp_params.registers.add_tuple(poly_x, poly_y)
+                except:
+                    # Fallback: add simple register polynomial (same as in tests.py)
+                    X1, Y1, X2, Y2 = zvp_params.registers.gens
+                    zvp_params.registers.add_tuple(X1 + X2 + 2, X1 + X2 + 2)
                 
-                # Create ZVP parameters
-                self._zvp_params_cache = utils.ZVPparams(glv_curve, registers)
+                # Cache the created parameters
+                self._zvp_params_cache = zvp_params
             except Exception as e:
                 if self.params.verbose:
                     print(f"    Warning: Could not initialize ZVP params: {e}")
