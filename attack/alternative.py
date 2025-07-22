@@ -171,8 +171,15 @@ class AlternativeZVPAttack:
         
         # Load precomputed remapped points
         try:
+            # Try both relative and attack-relative paths
             remapped_file = f"results/interleaving_secp256k1_remapped_{self.params.window_size}.json"
-            if not os.path.exists(remapped_file):
+            attack_remapped_file = f"attack/results/interleaving_secp256k1_remapped_{self.params.window_size}.json"
+            
+            if os.path.exists(remapped_file):
+                pass  # Use remapped_file
+            elif os.path.exists(attack_remapped_file):
+                remapped_file = attack_remapped_file
+            else:
                 if self.params.verbose:
                     print(f"    Warning: Precomputed file {remapped_file} not found")
                     print(f"    Falling back to on-demand DCP solving")
@@ -359,8 +366,9 @@ class AlternativeZVPAttack:
             
         if not hasattr(self, '_zvp_params_cache'):
             try:
-                # Initialize GLV parameters
-                glv_params = glv_module.GLV.secp256k1()
+                # Initialize GLV curve using utils.GLVCurve
+                glv_curve = utils.GLVCurve()
+                glv_curve.set_secp256k1()  # This uses glv_module.secp256k1 internally
                 
                 # Initialize registers with secp256k1 polynomials
                 registers = utils.Registers()
@@ -371,7 +379,7 @@ class AlternativeZVPAttack:
                     registers.add_tuple(poly_x, poly_y)
                 
                 # Create ZVP parameters
-                self._zvp_params_cache = utils.ZVPparams(glv_params, registers)
+                self._zvp_params_cache = utils.ZVPparams(glv_curve, registers)
             except Exception as e:
                 if self.params.verbose:
                     print(f"    Warning: Could not initialize ZVP params: {e}")
