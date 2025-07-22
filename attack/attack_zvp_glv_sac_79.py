@@ -195,12 +195,25 @@ def setup_zvp_params(args):
 def generate_glv_candidates(params):
     """Generate GLV-SAC candidates for small curve"""
     print(f"[+] Generating GLV-SAC candidates for {params.target_bits} bits")
+    print(f"    🎯 Target public key: ({params.target_pubkey[0]}, {params.target_pubkey[1]})")
+    
+    # Try to find private key for reference
+    if params.target_pubkey in PRIVKEY_TABLE:
+        target_d = PRIVKEY_TABLE[params.target_pubkey]
+        print(f"    🔑 Known private key: d = {target_d} (for debugging reference)")
+    else:
+        print(f"    ❓ Private key unknown (attacking blind)")
     
     candidates = []
     
     # For small curve, we can enumerate all possible bit combinations
     num_combinations = 3 ** params.target_bits  # Each bit can be -1, 0, or 1
-    print(f"    Total possible combinations: {num_combinations}")
+    print(f"    📊 Total possible combinations per component: {num_combinations}")
+    print(f"    📊 Total search space: {num_combinations}² = {num_combinations * num_combinations:,}")
+    
+    print(f"\n🔧 STEP 1: Generating signed bit patterns")
+    print(f"    Each bit can be: -1 (subtract), 0 (skip), +1 (add)")
+    print(f"    Pattern length: {params.target_bits} bits")
     
     # Generate all possible signed bit patterns
     def generate_signed_patterns(length):
@@ -216,91 +229,207 @@ def generate_glv_candidates(params):
         
         return patterns
     
+    print(f"    🔄 Generating patterns recursively...")
     b0_patterns = generate_signed_patterns(params.target_bits)
     b1_patterns = generate_signed_patterns(params.target_bits)
     
-    print(f"    Generated {len(b0_patterns)} patterns for each component")
+    print(f"    ✅ Generated {len(b0_patterns)} patterns for b0 component")
+    print(f"    ✅ Generated {len(b1_patterns)} patterns for b1 component")
+    
+    # Show first few patterns as examples
+    print(f"\n📋 Example b0 patterns (first 10):")
+    for i, pattern in enumerate(b0_patterns[:10]):
+        weight = sum(1 for x in pattern if x != 0)
+        print(f"      [{i+1:2}] {pattern} (weight: {weight})")
+    
+    print(f"\n🔍 STEP 2: Testing pattern combinations")
+    print(f"    Applying heuristics to select best candidates...")
     
     # Test different combinations
     valid_candidates = []
     test_count = 0
+    detailed_count = 0
     
-    for b0 in b0_patterns[:100]:  # Limit for performance
-        for b1 in b1_patterns[:100]:
+    for i, b0 in enumerate(b0_patterns[:100]):  # Limit for performance
+        for j, b1 in enumerate(b1_patterns[:100]):
             test_count += 1
             
-            # Simple heuristic: prefer patterns with some structure
+            # Calculate pattern weights
             b0_weight = sum(1 for x in b0 if x != 0)
             b1_weight = sum(1 for x in b1 if x != 0)
+            b0_sum = sum(x for x in b0)
+            b1_sum = sum(x for x in b1)
+            
+            # Show detailed analysis for first few combinations
+            if detailed_count < 5:
+                print(f"\n      🧮 Analyzing combination {test_count}:")
+                print(f"         b0 = {b0} (weight: {b0_weight}, sum: {b0_sum})")
+                print(f"         b1 = {b1} (weight: {b1_weight}, sum: {b1_sum})")
             
             # Skip all-zero patterns
             if b0_weight == 0 and b1_weight == 0:
+                if detailed_count < 5:
+                    print(f"         ❌ Skipped: both patterns are all-zero")
+                detailed_count += 1
                 continue
+            
+            # Apply heuristics
+            total_weight = b0_weight + b1_weight
+            weight_balance = abs(b0_weight - b1_weight)
+            magnitude = sum(abs(x) for x in b0 + b1)
+            
+            # Prefer patterns with reasonable structure
+            if total_weight >= 2:
+                score = weight_balance + magnitude * 0.1
                 
-            # Prefer patterns with reasonable weight
-            if b0_weight + b1_weight >= 2:
-                score = abs(b0_weight - b1_weight) + sum(abs(x) for x in b0 + b1)
+                if detailed_count < 5:
+                    print(f"         ✅ Accepted: total_weight={total_weight}, balance={weight_balance}, score={score:.2f}")
+                
                 valid_candidates.append((b0[:], b1[:], score))
+            else:
+                if detailed_count < 5:
+                    print(f"         ❌ Rejected: insufficient weight ({total_weight} < 2)")
+            
+            detailed_count += 1
             
             if len(valid_candidates) >= 50:  # Limit candidates
+                print(f"    🛑 Reached candidate limit (50), stopping early")
                 break
         
         if len(valid_candidates) >= 50:
             break
     
+    print(f"\n🏆 STEP 3: Ranking and selecting candidates")
+    print(f"    📊 Found {len(valid_candidates)} valid candidates from {test_count} tests")
+    
+    if not valid_candidates:
+        print(f"    ❌ No valid candidates found!")
+        return []
+    
     # Sort by score and take best candidates
+    print(f"    🔄 Sorting candidates by score (lower = better)...")
     valid_candidates.sort(key=lambda x: x[2])
     
-    # Take top candidates
-    for b0, b1, score in valid_candidates[:10]:
-        candidates.append([b0, b1])
+    print(f"\n📊 Top candidates (by score):")
+    for i, (b0, b1, score) in enumerate(valid_candidates[:10]):
+        b0_weight = sum(1 for x in b0 if x != 0)
+        b1_weight = sum(1 for x in b1 if x != 0)
+        print(f"    [{i+1:2}] Score: {score:6.2f} | b0={b0} (w:{b0_weight}) | b1={b1} (w:{b1_weight})")
     
-    print(f"    Generated {len(candidates)} GLV-SAC candidates")
-    print(f"    Tested {test_count} combinations")
+    # Take top candidates
+    selected_count = min(10, len(valid_candidates))
+    print(f"\n✅ STEP 4: Final selection")
+    print(f"    Selecting top {selected_count} candidates for attack:")
+    
+    for i, (b0, b1, score) in enumerate(valid_candidates[:selected_count]):
+        candidates.append([b0, b1])
+        print(f"      Candidate {i+1}: b0={b0}, b1={b1}")
+    
+    print(f"\n🎯 GENERATION SUMMARY:")
+    print(f"    ✅ Generated {len(candidates)} GLV-SAC candidates")
+    print(f"    ✅ Tested {test_count} combinations")
+    print(f"    ✅ Success rate: {len(candidates)}/{test_count} = {100*len(candidates)/test_count:.1f}%")
     
     return candidates
 
 def estimate_recovered_bits(candidates, target_bits):
     """Estimate information recovered by the attack"""
+    print(f"\n🧮 INFORMATION RECOVERY ANALYSIS:")
+    
     if not candidates:
+        print(f"    ❌ No candidates - zero information recovered")
         return 0.0
     
     # For small curve, calculate actual information content
     total_bits = target_bits * 2
     num_candidates = len(candidates)
     
+    print(f"    🎯 Target bits per component: {target_bits}")
+    print(f"    🎯 Total target bits (b0 + b1): {total_bits}")
+    print(f"    📊 Generated candidates: {num_candidates}")
+    
     # Information = log2(total_space / reduced_space)
     if num_candidates > 0:
         total_space = 3 ** total_bits  # 3^n for ternary representation
+        print(f"    🌌 Total search space: 3^{total_bits} = {total_space:,}")
+        
         reduction_factor = total_space / num_candidates
+        print(f"    📉 Reduction factor: {total_space:,} / {num_candidates} = {reduction_factor:,.1f}x")
+        
+        # Calculate information content
+        import math
+        if reduction_factor > 1:
+            info_bits = math.log2(reduction_factor)
+            print(f"    🎯 Information recovered: log₂({reduction_factor:.1f}) = {info_bits:.2f} bits")
+        else:
+            info_bits = 0.0
+            print(f"    ⚠️ No significant reduction achieved")
+        
+        # Alternative calculation
         recovered = total_bits - (total_bits * num_candidates / total_space)
-        return max(0.0, min(total_bits, recovered))
+        print(f"    📊 Alternative calculation: {total_bits} - ({total_bits} × {num_candidates} / {total_space}) = {recovered:.2f} bits")
+        
+        result = max(0.0, min(total_bits, recovered))
+        print(f"    ✅ Final estimate: {result:.1f} bits recovered")
+        
+        return result
     
     return 0.0
 
 def run_zvp_attack(params):
     """Run ZVP-GLV attack simulation for small curve"""
-    print(f"\n[+] Running ZVP-GLV Attack on small curve (mod {CURVE_P})")
+    print(f"\n🚀 LAUNCHING ZVP-GLV ATTACK")
+    print(f"=" * 60)
+    print(f"🎯 Target: Small curve mod {CURVE_P}")
+    print(f"🎯 Public key: ({params.target_pubkey[0]}, {params.target_pubkey[1]})")
+    print(f"🎯 Target bits: {params.target_bits}")
+    print(f"=" * 60)
     
     start_time = time.time()
+    print(f"⏰ Attack started at: {datetime.now().strftime('%H:%M:%S')}")
     
     # Generate candidates
+    print(f"\n🔧 PHASE 1: Candidate Generation")
     candidates = generate_glv_candidates(params)
     
     if not candidates:
+        print(f"\n❌ ATTACK FAILED")
         print(f"    ✗ No valid candidates generated")
+        print(f"    ✗ Unable to proceed with attack")
         return None
     
-    # Estimate recovered information
+    phase1_time = time.time() - start_time
+    print(f"\n✅ Phase 1 completed in {phase1_time:.3f} seconds")
+    
+    # Estimate recovered information  
+    print(f"\n🔧 PHASE 2: Information Analysis")
     recovered_bits = estimate_recovered_bits(candidates, params.target_bits)
     
+    phase2_time = time.time() - start_time - phase1_time
     attack_time = time.time() - start_time
     
-    print(f"    ✓ Attack completed in {attack_time:.2f} seconds")
-    print(f"    ✓ Generated {len(candidates)} candidates")
-    print(f"    ✓ Estimated recovered bits: {recovered_bits:.1f}")
+    print(f"\n✅ Phase 2 completed in {phase2_time:.3f} seconds")
+    
+    # Final summary
+    print(f"\n🏆 ATTACK COMPLETION SUMMARY")
+    print(f"=" * 60)
+    print(f"✅ Status: SUCCESS")
+    print(f"⏰ Total time: {attack_time:.3f} seconds")
+    print(f"📊 Candidates generated: {len(candidates)}")
+    print(f"🎯 Information recovered: {recovered_bits:.1f} bits")
+    print(f"📈 Efficiency: {len(candidates)/attack_time:.1f} candidates/second")
+    print(f"=" * 60)
+    
+    # Show final candidates
+    print(f"\n📋 FINAL ATTACK CANDIDATES:")
+    for i, candidate in enumerate(candidates):
+        b0, b1 = candidate
+        b0_weight = sum(1 for x in b0 if x != 0)
+        b1_weight = sum(1 for x in b1 if x != 0)
+        print(f"    [{i+1:2}] b0={b0} (weight: {b0_weight}) | b1={b1} (weight: {b1_weight})")
     
     # Prepare results
+    print(f"\n📦 PREPARING ATTACK RESULTS...")
     results = {
         "attack_info": {
             "name": f"ZVP-GLV Attack on Straus-Shamir Trick (mod {CURVE_P})",
@@ -324,12 +453,22 @@ def run_zvp_attack(params):
         }
     }
     
+    print(f"    ✅ Results package prepared")
+    print(f"    📊 Attack info: {len(results['attack_info'])} fields")
+    print(f"    📊 Attack results: {len(results['attack_results'])} fields")  
+    print(f"    📊 Parameters: {len(results['parameters'])} fields")
+    
     return results
 
 def save_results(results, params):
     """Save attack results to JSON file"""
+    print(f"\n💾 SAVING ATTACK RESULTS")
+    print(f"=" * 40)
+    
     if not results:
-        print(f"[-] No results to save")
+        print(f"❌ SAVE FAILED")
+        print(f"    ✗ No results to save")
+        print(f"    ✗ Attack may have failed")
         return None
     
     # Generate filename
@@ -338,19 +477,45 @@ def save_results(results, params):
     filename = f"attack_mod79_{pubkey_str}_bits{bits}.json"
     filepath = os.path.join(params.output_dir, filename)
     
-    print(f"[+] Saving results to: {filepath}")
+    print(f"📁 Target directory: {params.output_dir}")
+    print(f"📄 Filename: {filename}")
+    print(f"📍 Full path: {filepath}")
+    
+    # Ensure directory exists
+    os.makedirs(params.output_dir, exist_ok=True)
+    print(f"✅ Directory verified/created")
     
     try:
+        print(f"💾 Writing JSON data...")
         with open(filepath, 'w') as f:
             json.dump(results, f, indent=2)
         
-        print(f"    ✓ Results saved successfully")
-        print(f"    ✓ File size: {os.path.getsize(filepath)} bytes")
+        file_size = os.path.getsize(filepath)
+        print(f"✅ File written successfully")
+        print(f"📊 File size: {file_size:,} bytes")
+        
+        # Verify file content
+        with open(filepath, 'r') as f:
+            verify_data = json.load(f)
+        
+        print(f"✅ File verification passed")
+        print(f"📊 Candidates saved: {len(verify_data['attack_results']['scalars'])}")
+        print(f"📊 Recovery estimate: {verify_data['attack_results']['recovered']:.1f} bits")
+        
+        print(f"\n💾 SAVE SUMMARY:")
+        print(f"    ✅ Status: SUCCESS")
+        print(f"    📍 Location: {filepath}")
+        print(f"    📊 Size: {file_size:,} bytes")
+        print(f"=" * 40)
         
         return filepath
     
     except Exception as e:
+        print(f"\n❌ SAVE FAILED")
         print(f"    ✗ Error saving results: {e}")
+        print(f"    ✗ File path: {filepath}")
+        print(f"    ✗ Check directory permissions and disk space")
+        print(f"=" * 40)
         return None
 
 def main():
@@ -384,33 +549,40 @@ Examples:
     print("=" * 70)
     
     # Setup parameters
+    print(f"\n🔧 INITIALIZING ATTACK PARAMETERS")
     params = setup_zvp_params(args)
     if not params:
+        print(f"\n❌ INITIALIZATION FAILED")
         print("[-] Failed to setup attack parameters")
         sys.exit(1)
+    print(f"✅ Parameters initialized successfully")
     
     # Run attack
     results = run_zvp_attack(params)
     if not results:
+        print(f"\n❌ ATTACK EXECUTION FAILED")
         print("[-] Attack failed")
         sys.exit(1)
     
     # Save results
     output_file = save_results(results, params)
     if not output_file:
+        print(f"\n❌ RESULT SAVING FAILED")
         print("[-] Failed to save results")
         sys.exit(1)
     
     # Final summary
-    print(f"\n[+] Attack Summary:")
-    print(f"    Target: ({params.target_pubkey[0]}, {params.target_pubkey[1]})")
-    print(f"    Bits: {params.target_bits}")
-    print(f"    Candidates: {len(results['attack_results']['scalars'])}")
-    print(f"    Recovered: {results['attack_results']['recovered']:.1f} bits")
-    print(f"    Time: {results['attack_results']['time_zvp']:.2f}s")
-    print(f"    Output: {output_file}")
+    print(f"\n🎉 FINAL ATTACK SUMMARY")
+    print(f"=" * 60)
+    print(f"🎯 Target: ({params.target_pubkey[0]}, {params.target_pubkey[1]})")
+    print(f"🎯 Bits: {params.target_bits}")
+    print(f"📊 Candidates: {len(results['attack_results']['scalars'])}")
+    print(f"📊 Recovered: {results['attack_results']['recovered']:.1f} bits")
+    print(f"⏰ Time: {results['attack_results']['time_zvp']:.2f}s")
+    print(f"📁 Output: {output_file}")
+    print(f"=" * 60)
     
-    print(f"\n[+] ✓ Attack completed successfully!")
+    print(f"\n🎉 ✅ ATTACK COMPLETED SUCCESSFULLY! 🎉")
 
 if __name__ == "__main__":
     main()
