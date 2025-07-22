@@ -222,7 +222,7 @@ class AlternativeZVPAttack:
         self.attack_results['time_precompute'] = time.time() - start_time
         
         if self.params.verbose:
-            print(f"    Time: {self.attack_results['time_precompute']:.3f}s")
+            print(f"    Time: {float(self.attack_results['time_precompute']):.3f}s")
     
     def _precompute_dcp_on_demand(self):
         """Fallback: compute DCP solutions on demand using SAGE/PARI"""
@@ -554,12 +554,12 @@ class AlternativeZVPAttack:
         for candidates in iteration_candidates:
             total_combinations *= len(candidates) if candidates else 1
         
-        self.attack_results['reduced_space_bits'] = floor(log(total_combinations, 2)) if total_combinations > 0 else 0
+        self.attack_results['reduced_space_bits'] = int(floor(log(total_combinations, 2))) if total_combinations > 0 else 0
         
         if self.params.verbose:
             print(f"[+] Attack phase complete:")
             print(f"    Reduced space: {self.attack_results['reduced_space_bits']} bits")
-            print(f"    Time: {self.attack_results['time_attack']:.2f}s")
+            print(f"    Time: {float(self.attack_results['time_attack']):.2f}s")
         
         return iteration_candidates
     
@@ -604,7 +604,7 @@ class AlternativeZVPAttack:
         if self.params.verbose:
             print(f"[+] BSGS phase complete:")
             print(f"    Recovered key: {hex(recovered_key) if recovered_key else 'Not recovered'}")
-            print(f"    Time: {self.attack_results['time_bsgs']:.2f}s")
+            print(f"    Time: {float(self.attack_results['time_bsgs']):.2f}s")
         
         return recovered_key
     
@@ -1053,9 +1053,11 @@ Examples:
         # Summary
         print(f"\n[+] Attack Summary:")
         print(f"    Reduced space: {attack.attack_results['reduced_space_bits']} bits")
-        print(f"    Recovery rate: {(256 - attack.attack_results['reduced_space_bits']) / 256 * 100:.1f}%")
+        recovery_rate = float((256 - attack.attack_results['reduced_space_bits']) / 256 * 100)
+        print(f"    Recovery rate: {recovery_rate:.1f}%")
         print(f"    Recovered key: {hex(recovered_key) if recovered_key else 'Not recovered'}")
-        print(f"    Total time: {sum([attack.attack_results['time_precompute'], attack.attack_results['time_attack'], attack.attack_results['time_bsgs']]):.2f}s")
+        total_time = float(sum([attack.attack_results['time_precompute'], attack.attack_results['time_attack'], attack.attack_results['time_bsgs']]))
+        print(f"    Total time: {total_time:.2f}s")
         print(f"    Output file: {args.save}")
         
         return 0 if recovered_key else 1
