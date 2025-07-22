@@ -3,7 +3,7 @@
     "name": "ZVP-GLV Attack on Window Interleaving (Alternative) - Small Curve",
     "target_curve": "small_curve_mod_79",
     "attack_type": "Window Interleaving Alternative",
-    "timestamp": "2025-07-22T13:20:16.821953",
+    "timestamp": "2025-07-22T14:10:29.180708",
     "pubkey": "(25, 17)",
     "window_size": 3,
     "target_bits": 6,
@@ -11,37 +11,86 @@
     "known_private_key": 4
   },
   "attack_results": {
-    "iteration_candidates": [
+    "scalars": [
       [
         [
-          -1,
-          -3
+          -7,
+          -7
         ],
         [
-          1,
+          -5,
+          -3
+        ]
+      ],
+      [
+        [
+          -7,
+          7
+        ],
+        [
+          -5,
           3
         ]
       ],
       [
         [
-          -1,
+          7,
+          -7
+        ],
+        [
+          5,
+          -3
+        ]
+      ],
+      [
+        [
+          7,
+          7
+        ],
+        [
+          5,
+          3
+        ]
+      ]
+    ],
+    "iteration_candidates": [
+      [
+        [
+          -7,
+          -5
+        ],
+        [
+          7,
+          5
+        ]
+      ],
+      [
+        [
+          -7,
           -3
         ],
         [
-          1,
+          7,
           3
         ]
       ]
     ],
     "reduced_space_bits": 2,
-    "recovered_bits": 4,
+    "recovered": 4.0,
     "recovered_key": null,
-    "tested_combinations": 4,
-    "precomputed_solutions": 60,
-    "unique_points": 52,
-    "time_precompute": 0.0005967617034912109,
-    "time_attack": 0.00012683868408203125,
-    "time_recovery": 2.002716064453125e-05,
-    "time_total": 0.0007436275482177734
+    "oracle_queries": 16,
+    "dcp_solutions": 60,
+    "enumeration_count": 0,
+    "precomputed_points": 52,
+    "time_precompute": 0.0006031990051269531,
+    "time_attack": 0.0001227855682373047,
+    "time_recovery": 1.7881393432617188e-05,
+    "time_total": 0.000743865966796875,
+    "stats": {
+      "points_tested": 0,
+      "combinations_tested": 0,
+      "oracle_hits": 10,
+      "fallback_used": false
+    }
   }
 }
