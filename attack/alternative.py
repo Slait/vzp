@@ -232,13 +232,48 @@ class AlternativeZVPAttack:
             print(f"    Time: {float(self.attack_results['time_precompute']):.3f}s")
     
     def _precompute_dcp_on_demand(self):
-        """Fallback: compute DCP solutions on demand using SAGE/PARI"""
+        """
+        Generate DCP solutions on-demand using the project's methodology.
+        
+        This implements the same logic as zvp_glv_inter_easy_prec.py to generate
+        DCP solutions and save them for future use.
+        """
         if not DCP_AVAILABLE:
             if self.params.verbose:
                 print(f"    DCP modules not available, using fallback method")
             self._precompute_fallback_points()
             return
         
+        if self.params.verbose:
+            print(f"    Generating DCP solutions using project methodology...")
+            print(f"    This may take a while for the first run...")
+        
+        try:
+            # Generate DCP solutions using the project's methodology
+            dcp_data = self._generate_dcp_solutions_for_window_size(self.params.window_size)
+            
+            if dcp_data and len(dcp_data) > 0:
+                # Process the generated data
+                self._process_generated_dcp_data(dcp_data)
+                
+                # Save for future use
+                if self.params.verbose:
+                    print(f"    Saving generated solutions for future use...")
+                self._save_generated_dcp_data(dcp_data, self.params.window_size)
+                
+            else:
+                if self.params.verbose:
+                    print(f"    Warning: No DCP solutions generated, using fallback method")
+                self._precompute_fallback_points()
+                
+        except Exception as e:
+            if self.params.verbose:
+                print(f"    Error in DCP generation: {e}")
+                print(f"    Falling back to simple DCP solving...")
+            self._precompute_dcp_simple()
+    
+    def _precompute_dcp_simple(self):
+        """Simple DCP solving for individual scalar pairs"""
         solutions_found = 0
         
         for g0, g1 in product(self.params.window_values, repeat=2):
@@ -255,12 +290,204 @@ class AlternativeZVPAttack:
                     solutions_found += 1
                     
             except Exception as e:
-                if self.params.verbose:
+                if self.params.verbose and solutions_found < 5:
                     print(f"    Warning: DCP solution failed for ({g0}, {g1}): {e}")
                 continue
         
         if self.params.verbose:
-            print(f"    On-demand solutions found: {solutions_found}")
+            print(f"    Simple DCP solutions found: {solutions_found}")
+    
+    def _generate_dcp_solutions_for_window_size(self, window_size):
+        """
+        Generate DCP solutions for a given window size using the project's methodology.
+        
+        This implements the same logic as dcp_points_remapping() from zvp_glv_inter_easy_prec.py
+        """
+        try:
+            # Create ZVP parameters for DCP experiments
+            zvp_params = self._create_zvp_params_for_dcp_generation()
+            if not zvp_params:
+                return []
+            
+            # Run DCP experiments for all window value combinations
+            dcp_points = self._run_dcp_experiments(zvp_params, window_size)
+            
+            if not dcp_points:
+                if self.params.verbose:
+                    print(f"    No DCP points found from experiments")
+                return []
+            
+            # Convert to remapped format
+            remapped_data = self._create_remapped_data(dcp_points, zvp_params, window_size)
+            
+            return remapped_data
+            
+        except Exception as e:
+            if self.params.verbose:
+                print(f"    Error in DCP generation: {e}")
+            return []
+    
+    def _create_zvp_params_for_dcp_generation(self):
+        """Create ZVP parameters for DCP generation"""
+        try:
+            # Initialize GLV curve
+            glv_curve = utils.GLVCurve()
+            glv_curve.set_secp256k1()
+            
+            # Initialize registers with secp256k1 polynomials
+            registers = utils.Registers()
+            
+            # Load default polynomials for secp256k1
+            try:
+                secp256k1_polys = utils.get_secp256k1_polynomials()
+                for poly_x, poly_y in secp256k1_polys:
+                    registers.add_tuple(poly_x, poly_y)
+            except:
+                # Fallback: add simple register polynomial
+                registers.add_tuple("X1 + X2", "X1 + X2")
+            
+            # Create ZVP parameters
+            zvp_params = utils.ZVPparams(glv_curve, registers)
+            zvp_params.target_bits = window_size
+            zvp_params.attack = dcp.interleaving_dcp_experiment
+            
+            return zvp_params
+            
+        except Exception as e:
+            if self.params.verbose:
+                print(f"    Could not create ZVP params for generation: {e}")
+            return None
+    
+    def _run_dcp_experiments(self, zvp_params, window_size):
+        """
+        Run DCP experiments for all window value combinations.
+        """
+        if self.params.verbose:
+            print(f"    Running DCP experiments for window size {window_size}...")
+        
+        all_points = set()
+        window_values = self.params.window_values
+        experiment_count = 0
+        successful_experiments = 0
+        
+        # Run experiments for a subset of combinations (to avoid too many experiments)
+        max_experiments = min(len(window_values) * 2, 50)  # Limit experiments
+        
+        for i, (w0, w1) in enumerate(product(window_values, repeat=2)):
+            if experiment_count >= max_experiments:
+                break
+                
+            try:
+                # Set up secrets for this experiment
+                if not hasattr(zvp_params, 'secrets'):
+                    zvp_params.secrets = utils.GLVSecrets(zvp_params.glv)
+                
+                zvp_params.secrets.k0 = w0
+                zvp_params.secrets.k1 = w1
+                
+                # Run the DCP experiment
+                result = dcp.interleaving_dcp_experiment(zvp_params)
+                experiment_count += 1
+                
+                # Extract point if found
+                if result.get("recovered") and result.get("point"):
+                    point_coords = result["point"]
+                    if len(point_coords) == 2:
+                        point = zvp_params.glv.curve(point_coords[0], point_coords[1])
+                        all_points.add(point)
+                        successful_experiments += 1
+                        
+            except Exception as e:
+                if self.params.verbose and experiment_count < 10:
+                    print(f"    Experiment failed for ({w0}, {w1}): {e}")
+                experiment_count += 1
+                continue
+        
+        if self.params.verbose:
+            print(f"    Completed {experiment_count} experiments")
+            print(f"    Found {len(all_points)} unique DCP solution points")
+        
+        return all_points
+    
+    def _create_remapped_data(self, dcp_points, zvp_params, window_size):
+        """
+        Create remapped data structure from DCP points.
+        """
+        if self.params.verbose:
+            print(f"    Creating remapped data structure...")
+        
+        window_values = self.params.window_values
+        point_list = []
+        
+        for point in dcp_points:
+            scalars = []
+            # Test all window value combinations for this point
+            for w0 in window_values:
+                for w1 in window_values:
+                    try:
+                        P = w0 * point
+                        Q = w1 * zvp_params.glv.lam * point
+                        
+                        # Check if this combination causes zero detection
+                        if zvp_params.registers.is_zero(P, Q):
+                            scalars.append([int(w0), int(w1)])
+                            
+                    except Exception:
+                        continue
+            
+            if scalars:  # Only include points that have associated scalar pairs
+                point_coords = [int(point[0]), int(point[1])]
+                point_list.append([point_coords, scalars])
+        
+        # Create the data structure matching the expected format
+        try:
+            register_strings = zvp_params.registers.to_strings()
+        except:
+            register_strings = [["X1 + X2", "X1 + X2"]]  # Fallback
+            
+        remapped_data = [{
+            "register": register_strings,
+            "points": point_list
+        }]
+        
+        if self.params.verbose:
+            print(f"    Remapped data created: {len(point_list)} points with scalar mappings")
+        
+        return remapped_data
+    
+    def _process_generated_dcp_data(self, dcp_data):
+        """Process generated DCP data into the format expected by the attack"""
+        for register_data in dcp_data:
+            for point_coords, scalar_pairs in register_data["points"]:
+                point_tuple = tuple(point_coords)
+                
+                if point_tuple not in self.precomputed_points:
+                    self.precomputed_points[point_tuple] = set()
+                
+                for g0, g1 in scalar_pairs:
+                    self.precomputed_points[point_tuple].add((g0, g1))
+    
+    def _save_generated_dcp_data(self, dcp_data, window_size):
+        """Save generated DCP data to file for future use"""
+        try:
+            # Try both possible locations
+            for results_dir in ["attack/results", "results"]:
+                try:
+                    os.makedirs(results_dir, exist_ok=True)
+                    filename = f"{results_dir}/interleaving_secp256k1_remapped_{window_size}.json"
+                    
+                    with open(filename, 'w') as f:
+                        json.dump(dcp_data, f, indent=2)
+                    
+                    if self.params.verbose:
+                        print(f"    Generated DCP data saved to: {filename}")
+                    return  # Success, exit
+                except:
+                    continue
+                    
+        except Exception as e:
+            if self.params.verbose:
+                print(f"    Could not save generated data: {e}")
     
     def _precompute_fallback_points(self):
         """Generate deterministic fallback points for testing"""
