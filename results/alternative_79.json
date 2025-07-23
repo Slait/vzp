@@ -1,0 +1,96 @@
+{
+  "attack_info": {
+    "name": "ZVP-GLV Attack on Window Interleaving (Alternative) - Small Curve",
+    "target_curve": "small_curve_mod_79",
+    "attack_type": "Window Interleaving Alternative",
+    "timestamp": "2025-07-22T14:10:29.180708",
+    "pubkey": "(25, 17)",
+    "window_size": 3,
+    "target_bits": 6,
+    "total_iterations": 2,
+    "known_private_key": 4
+  },
+  "attack_results": {
+    "scalars": [
+      [
+        [
+          -7,
+          -7
+        ],
+        [
+          -5,
+          -3
+        ]
+      ],
+      [
+        [
+          -7,
+          7
+        ],
+        [
+          -5,
+          3
+        ]
+      ],
+      [
+        [
+          7,
+          -7
+        ],
+        [
+          5,
+          -3
+        ]
+      ],
+      [
+        [
+          7,
+          7
+        ],
+        [
+          5,
+          3
+        ]
+      ]
+    ],
+    "iteration_candidates": [
+      [
+        [
+          -7,
+          -5
+        ],
+        [
+          7,
+          5
+        ]
+      ],
+      [
+        [
+          -7,
+          -3
+        ],
+        [
+          7,
+          3
+        ]
+      ]
+    ],
+    "reduced_space_bits": 2,
+    "recovered": 4.0,
+    "recovered_key": null,
+    "oracle_queries": 16,
+    "dcp_solutions": 60,
+    "enumeration_count": 0,
+    "precomputed_points": 52,
+    "time_precompute": 0.0006031990051269531,
+    "time_attack": 0.0001227855682373047,
+    "time_recovery": 1.7881393432617188e-05,
+    "time_total": 0.000743865966796875,
+    "stats": {
+      "points_tested": 0,
+      "combinations_tested": 0,
+      "oracle_hits": 10,
+      "fallback_used": false
+    }
+  }
+}

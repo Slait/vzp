@@ -1,0 +1,16 @@
+{
+  "attack_info": {
+    "algorithm": "zvp_glv_sac_demo",
+    "target_bits": 4,
+    "curve": "secp256k1",
+    "public_key": "ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a26302b195386bea3f5f002dc033b92cfc2c9e71b586302b09cfe535e1ff290b1b5ac",
+    "timestamp": "2025-07-21T15:44:36.695399"
+  },
+  "demo_results": {
+    "coordinates_extracted": true,
+    "x_coordinate": "0xceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a2630",
+    "y_coordinate": "0x2b195386bea3f5f002dc033b92cfc2c9e71b586302b09cfe535e1ff290b1b5ac",
+    "parsing_error_fixed": true,
+    "note": "This is a demonstration - real attack requires SageMath"
+  }
+}

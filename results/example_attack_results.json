@@ -1,0 +1,53 @@
+{
+    "attack_info": {
+        "algorithm": "zvp_glv_sac",
+        "target_bits": 4,
+        "curve": "secp256k1",
+        "public_key": "ceb6cbbcdbdf5ef7150682150f4ce2c6f4807b349827dcdbdd1f2efa885a26302b195386bea3f5f002dc033b92cfc2c9e71b586302b09cfe535e1ff290b1b5ac",
+        "register_set": "projective:madd-2015-rcb",
+        "timestamp": "2025-07-21T15:27:00Z"
+    },
+    "execution_stats": {
+        "time_setup": 0.15,
+        "time_zvp": 2.47,
+        "time_dcp": 1.23,
+        "time_total": 3.85,
+        "memory_usage_mb": 128.5
+    },
+    "attack_results": {
+        "success": true,
+        "recovered_bits": 4.2,
+        "confidence": 0.85,
+        "num_candidates": 3,
+        "scalars": [
+            {
+                "k0_bits": [1, 0, 1, 1],
+                "k1_bits": [0, 1, 1, 0],
+                "score": 0.92
+            },
+            {
+                "k0_bits": [1, 0, 1, 0],
+                "k1_bits": [0, 1, 1, 1],
+                "score": 0.78
+            },
+            {
+                "k0_bits": [1, 1, 0, 1],
+                "k1_bits": [0, 0, 1, 1],
+                "score": 0.65
+            }
+        ]
+    },
+    "glv_parameters": {
+        "lambda": "5363ad4cc05c30e0a5261c028812645a122e22ea20816678df02967c1b23bd72",
+        "beta": "7ae96a2b657c07106e64479eac3434e99cf0497512f58995c1396c28719501ee",
+        "order": "fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141"
+    },
+    "validation": {
+        "known_private_key": "b10f22572c497a836ea187f2e1fc23",
+        "glv_decomposition": {
+            "d0": "b0f22572c497a836ea187f2e1fc23",
+            "d1": "01000000000000000000000000000"
+        },
+        "verification_status": "success"
+    }
+}
